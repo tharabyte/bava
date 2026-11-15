@@ -367,9 +367,11 @@ click or by a picture loading; removing can send nothing anywhere.
   `markstream-svelte` (size, no network request, Bava's colours, Bava's
   code blocks, links and HTML).
 - Milestones 11 to 14 reshaped for these decisions, for the user's approval.
-- The mockup's AI page redrawn for them: a claimed page with its bar and
-  Stop, the dot in the Files tree, the claimed pages in the AI pane, the
-  selection chip, the summary, the "Allow the AI to edit pages" switch; the
-  proposals, review list, selection prompts and quick actions taken out.
-  Then the chat pane, step lines, summary and AI settings in the Design
-  System.
+- Done 2026-11-16: the AI pieces drawn in the Design System (fourteen cards
+  and `components/ai.css`, global `ai-*` classes on tokens, replaced by
+  generated styles once built; SpaceTree marks a page the AI is editing),
+  and the mockup's AI page redrawn on them: a page the AI is editing with
+  its bar and Stop, the mark in the Files tree, the pages being edited in
+  the AI pane, the selection chip, the summary, the "Allow the AI to edit
+  pages" switch; proposals, the review list, selection prompts and quick
+  actions taken out.

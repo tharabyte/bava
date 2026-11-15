@@ -191,8 +191,8 @@ it has claimed (decisions 23 to 27).
 
 20. **In Milestone 11 the agent gets Look, Claim, Make and Change,**
     creating new pages included; Organise (a folder, rename or move, move
-    to Trash) comes with tasks of several steps in Milestone 14. Proposed
-    with the reshaped roadmap, for the user's approval.
+    to Trash) comes with tasks of several steps in Milestone 14. Agreed by
+    the owner on 2026-11-16.
 
 21. **Read anywhere, change any page the AI has claimed.** The model and
     the user's agent may read and search any page of the Space, the open
@@ -366,7 +366,7 @@ click or by a picture loading; removing can send nothing anywhere.
   (streaming, tools, step limit, no unexpected network call), and
   `markstream-svelte` (size, no network request, Bava's colours, Bava's
   code blocks, links and HTML).
-- Milestones 11 to 14 reshaped for these decisions, for the user's approval.
+- Milestones 11 to 14 reshaped for these decisions: done, agreed 2026-11-16.
 - Done 2026-11-16: the AI pieces drawn in the Design System (fourteen cards
   and `components/ai.css`, global `ai-*` classes on tokens, replaced by
   generated styles once built; SpaceTree marks a page the AI is editing),

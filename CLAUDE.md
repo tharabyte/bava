@@ -14,7 +14,8 @@ once into ordinary shapes and arrows; documents share the same file.
 2. **Files are the source of truth.** Work is plain text on disk, readable and
    diffable anywhere; no database or hidden state. Bava's own state lives in
    documented locations outside the project; credentials go to the OS secret
-   store, never a file.
+   store (on Flathub, a file encrypted with the Secret portal's lock), never
+   a plain file.
 3. **Desktop only.** macOS, Linux, Windows. `build/android/` and `build/ios/`
    are never revived.
 4. **Never run git write operations** (add, commit, push, tag, branch,

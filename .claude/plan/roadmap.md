@@ -65,24 +65,38 @@ word in its id, its shown name and any artifact it keeps (`walks-<os>`,
 download keeps `bava-<os>-<commit>`), with `docs/testing.md` and the build skill to match.
 Exit: green on all three systems.
 
-### 11: AI foundation
-A chat pane against a local, OpenAI-compatible endpoint the user sets.
-Generated D2 is compiled, repaired at most twice, and converted into shapes.
-One thread per file, kept as JSONL in the app's data folder. Rendering
-replies needs a library that makes no network request and takes Bava's
-tokens; spike it first. Exit: tests against a local stub, never a live
-endpoint.
+### 11: AI through your own agent
+Decisions in `.claude/work/specs/ai-foundation.md`. Bava's tool menu (look,
+claim, make, change), served on this computer only, for an agent the user
+already runs to connect to with a one-time code; Bava makes no model call.
+"Allow the AI to edit pages" lets the agent change any page it claims, new
+pages included: a claimed page is read-only for the user until the agent
+releases it or the user presses Stop. Changes land at once with no review,
+⌘Z on the page takes them back, and each round ends with a summary. D2 the
+agent writes is compiled and laid out into shapes, its errors answered to
+the agent. Exit: tests against a stub agent, never a live one.
 
-### 12: AI editing
-Ask for a change to a selection, see a diff, accept or reject; one undo.
+### 12: A model on your computer
+Two trials first: the Go model library (streaming, tools, step limit, no
+unexpected network call) and the reply renderer (no network request,
+Bava's tokens and code blocks). The chat pane: streamed replies, Stop, step
+lines, the summary, the selection as a chip; chats per Space with New chat,
+as JSONL in the
+app's data folder; local servers found from AI settings; older messages
+summarised, visibly, when a chat outgrows the model; a folder attached to a
+message. Exit: tests against a local stub, never a live endpoint.
 
-### 13: Hosted providers
-Bring your own key; credentials in the OS secret store; consent before the
-first hosted call; clear errors. Exit: no credential in any file Bava
-writes; every endpoint from user settings.
+### 13: Online models with your key
+Keys in the OS secret store (on Flathub, the Secret portal's lock and an
+encrypted file); the general consent statement and its unticked box in AI
+settings; tokens shown per reply; clear errors. Exit: no credential in any
+plain file Bava writes; every endpoint from user settings.
 
-### 14: Provider login
-OAuth device-code sign-in; tokens in the secret store; refresh and expiry.
+### 14: Tasks of several steps
+A step limit and Stop; each step's changes land as made, on claimed pages,
+with one summary at the end; the organise tools (a folder, rename or move,
+move to Trash, restorable, Trash never emptied by the AI); an "AI rules" page
+the model reads first.
 
 ### 16: Release-ready, without any account
 Everything that costs nothing:

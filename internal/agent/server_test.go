@@ -228,3 +228,22 @@ func TestServerSetToolsTellsAgents(t *testing.T) {
 		t.Fatalf("tools after SetTools: %+v", tools.Tools)
 	}
 }
+
+// Stop closes the port even when the server has not begun serving it yet.
+func TestServerStopRightAfterStartClosesThePort(t *testing.T) {
+	s := NewServer()
+	for range 200 {
+		port := freePort(t)
+		if err := s.Start(port, testCode); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Stop(); err != nil {
+			t.Fatal(err)
+		}
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
+		if err == nil {
+			conn.Close()
+			t.Fatal("still listening after Stop")
+		}
+	}
+}

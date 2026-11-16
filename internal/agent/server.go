@@ -166,13 +166,16 @@ func (s *Server) SetCode(code string) {
 // not an error.
 func (s *Server) Stop() error {
 	s.mu.Lock()
-	srv := s.http
+	srv, ln := s.http, s.ln
 	s.http, s.ln, s.code = nil, nil, ""
 	s.mu.Unlock()
 	s.closeSessions()
 	if srv == nil {
 		return nil
 	}
+	// Shutdown closes only the ports already being served; one handed over
+	// a moment ago may not be yet, and would keep taking connections.
+	_ = ln.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {

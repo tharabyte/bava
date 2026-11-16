@@ -16,4 +16,10 @@ export default defineConfig({
     },
   },
   plugins: [svelte(), wails("./bindings"), iconSets()],
+  // The page worker is bundled on its own and sees only these plugins. It is
+  // started as a module, and reaches the icon sets and rune modules.
+  worker: {
+    format: "es",
+    plugins: () => [svelte(), iconSets()],
+  },
 });

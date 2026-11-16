@@ -22,7 +22,7 @@ of ours; never run git write operations (the user commits).
 6. **Plan** in `.claude/work/plans/<NN>-<name>.md`; wait for explicit approval before any code.
 7. **Implement** task by task, test first per the table below, running affected tests after each.
 8. **Sync artifacts** (checklist below) in the same change.
-9. **Gates:** `go vet ./internal/... .`, `go test ./internal/... .`, `npm run check`, `npm run lint`, `npm test`; `npm run browser` when anything drawn or page behavior changes.
+9. **Gates:** `go vet ./internal/... .`, `go test ./internal/... .`, `npm run check`, `npm run lint`, `npm test`, `npm run build` (bundles the app and its workers as CI does); `npm run browser` when anything drawn or page behavior changes.
 10. **Review:** dispatch `spec-reviewer` on the diff; verify each finding, push back on wrong ones.
 11. **Report** what shipped, files, test counts, every deviation from spec, and a one-line commit message prefixed by area or kind (`canvas:`, `ci:`, `docs:`). Then stop.
 
@@ -89,7 +89,7 @@ exit code (`npm test` can fail with every test passed).
 
 | Claim | Requires |
 |---|---|
-| Tests pass / types / lint | That command's output this session, exit 0 |
+| Tests pass / types / lint / build | That command's output this session, exit 0 |
 | Goldens clean | Golden run, changed SVGs read by eye |
 | Bug fixed | The original failing test, now green |
 | Component done | Keyboard pass, both themes |

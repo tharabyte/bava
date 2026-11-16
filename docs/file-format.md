@@ -625,7 +625,14 @@ Every file pages show or link to, one folder per Space.
 - Cursor, zoom, pane widths, view mode, recent Spaces and files, a Space's
   open folders and last page: per viewer, in `localStorage`.
 - Chat transcripts: JSONL in the platform data directory (`.ai/rules/ai.md`).
-- Credentials: the OS secret store.
+- Credentials: the OS secret store, under the service `com.tharabyte.bava`:
+  the Keychain on macOS; Credential Manager on Windows, a value over 2,560
+  bytes kept in parts (`<name>`, `<name>#1`, ...), the first noting how
+  many. Inside Flatpak, `keys.sealed` beside the settings: JSON
+  `{"version":1,"nonce":...,"sealed":...}`, the names and values sealed
+  with AES-GCM under a key drawn (HKDF-SHA256) from the Secret portal's
+  secret for Bava, a fresh nonce on every write, readable by its owner only.
+  Linux outside Flatpak keeps no credentials.
 - Folders and files the user allowed Bava to reach, inside a store's
   sandbox: `access.json` beside the settings, each a path and, on macOS, a
   security-scoped bookmark. Deleting it only means choosing them again.

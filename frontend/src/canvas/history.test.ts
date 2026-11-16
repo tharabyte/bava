@@ -222,3 +222,22 @@ describe('a step that changes nothing', () => {
     expect(history.canUndo).toBe(settled);
   });
 });
+
+describe('a page the AI holds', () => {
+  it('refuses the user’s changes, undo and redo, and takes the AI’s', () => {
+    const history = createHistory(empty);
+    history.mutate((draft) => void draft.elements.push(rect('a', 0)));
+    history.hold(true);
+    history.mutate((draft) => void (draft.elements[0].x = 50));
+    expect(history.current.elements[0].x).toBe(0);
+    history.undo();
+    expect(history.current.elements).toHaveLength(1);
+    history.mutate((draft) => void draft.elements.push(rect('b', 20)), 'ai');
+    expect(history.current.elements).toHaveLength(2);
+    expect(history.held).toBe(true);
+    history.hold(false);
+    // Released, the AI's change is one step back.
+    history.undo();
+    expect(history.current.elements.map((e) => e.id)).toEqual(['a']);
+  });
+});

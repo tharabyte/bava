@@ -95,6 +95,9 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 
 | Component | What it is (Ark primitive) |
 |---|---|
+| `AgentPane` | The AI pane before a chat: your agent connected or not, step lines (lives in `ai/`) |
+| `ClaimBar` | Across a page the AI holds: says so, Stop (lives in `ai/`) |
+| `AISection` | Settings ▸ AI: editing, your own agent with address, code, port (lives in `settings/`) |
 | `AboutDialog` | Mark, title, tagline, licence |
 | `BlockHandle` | + and grip left of a hovered block |
 | `CanvasControls` | Zoom readout and buttons |
@@ -142,6 +145,8 @@ NumberInput (in `NumberField`), Toast, ToggleGroup. Build when a screen needs.
 | `SearchPalette` | Search across a Space; state in `files/search.svelte.ts` |
 | `CommandPalette` | Every menu command by name (⇧⌘P); groups from `shell/palette.ts` |
 | `SectionTabs` | Vertical sections (Tabs) |
+| `SummaryCard` | The record of an AI round: created, changed, skipped, no buttons (lives in `ai/`) |
+| `StepLine` | One line per AI tool call, spinner, tick or cross; a run folds (lives in `ai/`) |
 | `Segments` | Few exclusive choices (SegmentGroup); never `role="radio"` buttons |
 | `Select` | Dropdown choice (Select) |
 | `SelectionToolbar` | Bottom-centre selection toolbar; model in `canvas/toolbar.ts` |

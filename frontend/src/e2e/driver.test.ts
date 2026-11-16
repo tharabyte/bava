@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runScenario, watchErrors, watchWindow, type Step, describePage } from './driver';
+import { measuredAsDrawn, runScenario, watchErrors, watchWindow, type Step, describePage } from './driver';
 import { PENDING } from '../files/tree';
 
 afterEach(() => {
@@ -228,6 +228,18 @@ describe('the smoke driver', () => {
     expect(await runScenario([{ do: 'pdffile', target: 'First page.pdf', text: 'min=2' }], never)).toMatch(/want at least 2/);
   });
 
+  // The user's own agent, as the host plays it: a tool called until its
+  // answer holds the text, the plug opening a moment after the setting.
+  it('calls an agent tool until its answer holds the text, and fails with why not', async () => {
+    const answers = ['agents are not allowed', ''];
+    const agent = vi.fn(async () => answers.shift() ?? '');
+    const step = { do: 'agent' as const, target: 'read_page', name: '{"path":"First page.md"}', text: '[b1]' };
+    expect(await runScenario([step], { ...env(), agent })).toBe('');
+    expect(agent).toHaveBeenCalledWith('read_page', '{"path":"First page.md"}', '[b1]');
+    const never = { ...env(), timeoutMs: 50, agent: vi.fn(async () => 'read_page failed: There is no page First page.md.') };
+    expect(await runScenario([step], never)).toMatch(/There is no page/);
+  });
+
   // A zip the app wrote, read back by the host until it holds what it must.
   it('reads a zip back until it holds what it must, and fails with why not', async () => {
     const answers = ['zip Smoke.zip: no such file', ''];
@@ -348,5 +360,16 @@ describe("the window's focus during a walk", () => {
     expect(failed).toBe('step 1 (wait #never): never showed; the window: lost focus in step 1');
     const steady = await runScenario([{ do: 'wait', target: '#never' }], { ...env(), windowFocus: () => [] });
     expect(steady).toBe('step 1 (wait #never): never showed; the window: kept focus throughout');
+  });
+});
+
+describe('measuredAsDrawn', () => {
+  const file = (w: number) => `# P\n\n\`\`\`bava-canvas\n${JSON.stringify({ version: 1, elements: [{ id: 'n', type: 'text', text: 'Hi', x: 0, y: 0, w, h: 18, z: 1, measuredWidth: w, measuredHeight: 18 }] })}\n\`\`\`\n`;
+  const measure = () => ({ width: 14, height: 18 });
+  it('passes a text stored at the size the window measures', () => {
+    expect(measuredAsDrawn(file(14), 'n', measure)).toBe('');
+  });
+  it('fails one stored at another size, saying both', () => {
+    expect(measuredAsDrawn(file(20), 'n', measure)).toBe('stored 20x18, measured here 14x18');
   });
 });

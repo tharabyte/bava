@@ -27,12 +27,14 @@
     heading?: string;
     /** Controls at the end of each panel's header. */
     end?: Snippet;
+    /** The section shown first; the first section when absent. */
+    initial?: string;
   };
 
-  let { sections, label, heading, end }: Props = $props();
+  let { sections, label, heading, end, initial }: Props = $props();
 </script>
 
-<Tabs.Root orientation="vertical" defaultValue={sections[0]?.value} class="bava-section-tabs">
+<Tabs.Root orientation="vertical" defaultValue={initial ?? sections[0]?.value} class="bava-section-tabs">
   <div class="bava-section-nav">
     {#if heading}<span class="bava-section-heading">{heading}</span>{/if}
     <Tabs.List class="bava-section-list" aria-label={label}>

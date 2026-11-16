@@ -62,4 +62,21 @@ export interface Settings {
      * viewer, never written into a page. Wide by default.
      */
     "pageWidth": string;
+
+    /**
+     * AllowAgents is whether an AI agent the user runs on this computer may
+     * connect to Bava. Off by default.
+     */
+    "allowAgents": boolean;
+
+    /**
+     * AgentPort is the loopback port agents connect to.
+     */
+    "agentPort": number;
+
+    /**
+     * AllowAIEdits is whether any AI may change pages; off, the AI only
+     * reads and answers. Off by default.
+     */
+    "allowAIEdits": boolean;
 }

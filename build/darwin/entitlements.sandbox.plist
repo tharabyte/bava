@@ -13,6 +13,10 @@
 	<!-- A web card's details, fetched when the user pastes or refreshes it. -->
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<!-- The user's own AI agent connecting, on this computer's loopback
+	     address only, while AI settings allow agents. -->
+	<key>com.apple.security.network.server</key>
+	<true/>
 	<!-- Printing a page to PDF. -->
 	<key>com.apple.security.print</key>
 	<true/>

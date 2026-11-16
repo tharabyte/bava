@@ -57,7 +57,12 @@ export function measureTextBlock(
 let shared: CanvasRenderingContext2D | null | undefined;
 
 function sharedContext(): CanvasRenderingContext2D | null {
-  if (shared === undefined) shared = globalThis.document?.createElement('canvas').getContext('2d') ?? null;
+  // A worker has no document: it measures on a canvas never shown.
+  if (shared === undefined) {
+    shared =
+      globalThis.document?.createElement('canvas').getContext('2d') ??
+      (typeof OffscreenCanvas === 'undefined' ? null : (new OffscreenCanvas(1, 1).getContext('2d') as unknown as CanvasRenderingContext2D | null));
+  }
   return shared;
 }
 

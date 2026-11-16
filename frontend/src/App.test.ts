@@ -37,6 +37,12 @@ vi.mock('../bindings/github.com/tharabyte/bava/internal/app', () => ({
     SaveTemplate: vi.fn().mockResolvedValue({ path: '', error: '' }),
     CreatePageFrom: vi.fn().mockResolvedValue({ path: '', error: '' }),
   },
+  AgentService: {
+    Answer: vi.fn().mockResolvedValue(undefined),
+    Configure: vi.fn().mockResolvedValue({ on: false, address: '', code: '', codeKept: false, connected: 0, editing: false, problem: '' }),
+    NewCode: vi.fn().mockResolvedValue({ on: false, address: '', code: '', codeKept: false, connected: 0, editing: false, problem: '' }),
+    Status: vi.fn().mockResolvedValue({ on: false, address: '', code: '', codeKept: false, connected: 0, editing: false, problem: '' }),
+  },
   LogService: {
     Report: vi.fn().mockResolvedValue(undefined),
     TakeNotices: vi.fn().mockResolvedValue([]),

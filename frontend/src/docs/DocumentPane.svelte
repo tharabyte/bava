@@ -19,6 +19,8 @@
   import PageHeader from '../components/PageHeader.svelte';
   import SlashMenu from '../components/SlashMenu.svelte';
   import type { MenuNode } from '../canvas/context-menu';
+  import type { Node as ProseNode } from 'prosemirror-model';
+  import type { EditorView } from 'prosemirror-view';
   import { SWATCHES } from '../canvas/palette';
   import { t } from '../i18n/t';
   import type { MessageKey } from '../i18n/messages';
@@ -190,6 +192,26 @@
     return editor.markdown();
   }
 
+  /** The editor's view, for the AI's changes to the page; null before a page is shown. */
+  export function editorView(): EditorView | null {
+    return editor.view;
+  }
+
+  /** Whether the user locked the page. */
+  export function pageLocked(): boolean {
+    return editor.pageLocked;
+  }
+
+  /** The AI holds the page: read-only for the user until it lets go. */
+  export function setHeld(on: boolean): void {
+    editor.setHeld(on);
+  }
+
+  /** The open page's document as the editor holds it; null before a page is shown. */
+  export function currentDoc(): ProseNode | null {
+    return editor.view?.state.doc ?? null;
+  }
+
   /** Adds attachments as media blocks: where files were dropped (`at`, a point on screen), else at the caret. */
   export function insertMedia(names: string[], at?: { x: number; y: number }) {
     editor.insertMedia(names, at ? (editor.posAtPoint(at.x, at.y) ?? undefined) : undefined);
@@ -304,8 +326,9 @@
    * Shows a page, with fresh undo, and closes anything open over the last
    * one; `page` names it for remembering its folds on this computer.
    */
-  export function setPage(markdown: string, page: string | null = null) {
-    editor.setPage(markdown, page);
+  export function setPage(markdown: string, page: string | null = null, before: string | null = null) {
+    if (before !== null) editor.setPageAfter(before, markdown, page);
+    else editor.setPage(markdown, page);
     settings = editor.settings;
     pageTags = editor.tags;
     slash = null;
@@ -645,6 +668,8 @@
   }
 
   function openPageMenu(anchor: { x: number; y: number }) {
+    // The AI holds the page: its settings wait until it lets go.
+    if (editor.locked && !editor.pageLocked) return;
     const widths: MenuNode[] = [
       item('width:', t('doc.widthDefault')),
       item('width:narrow', t('width.narrow')),
@@ -654,14 +679,14 @@
     menu = {
       anchor,
       items: [
-        item('lock', editor.locked ? t('doc.unlock') : t('doc.lock')),
+        item('lock', editor.pageLocked ? t('doc.unlock') : t('doc.lock')),
         { kind: 'submenu', id: 'width', label: t('doc.width'), items: widths },
         ...(isTemplate
           ? []
           : [{ kind: 'separator' } satisfies MenuNode, item('duplicate', t('doc.duplicatePage')), item('saveTemplate', t('tree.saveTemplate')), item('export', t('tree.export')), item('trash', t('doc.trashPage'))]),
       ],
       run: (id) => {
-        if (id === 'lock') editor.setSettings({ locked: !editor.locked });
+        if (id === 'lock') editor.setSettings({ locked: !editor.pageLocked });
         else if (id.startsWith('width:')) editor.setSettings({ width: id.slice(6) || undefined });
         else if (id === 'duplicate') onDuplicatePage();
         else if (id === 'trash') onTrashPage();

@@ -12,7 +12,7 @@ A new rule is durable, non-obvious and scoped: register it here, a heading and a
 | `canvas.md` | `frontend/src/canvas/**` |
 | `editors.md` | `frontend/src/editor/**`, `frontend/src/docs/**` |
 | `file-format.md` | `internal/store/**`, `internal/format/**`, `internal/space/**`, `internal/config/**`, `docs/file-format.md` |
-| `ipc.md` | `internal/app/bindings*.go`, `internal/app/space*.go`, `internal/app/file*.go`, `internal/app/export*.go`, `internal/app/menu*.go`, `internal/web/**`, `frontend/src/ipc/**`, `frontend/src/files/**`, `frontend/src/shell/commands*.ts` |
+| `ipc.md` | `internal/app/bindings*.go`, `internal/app/agent*.go`, `internal/app/space*.go`, `internal/app/file*.go`, `internal/app/export*.go`, `internal/app/menu*.go`, `internal/web/**`, `frontend/src/ipc/**`, `frontend/src/files/**`, `frontend/src/shell/commands*.ts` |
 | `testing.md` | `**/*_test.go`, `testdata/**`, `tests/**`, `frontend/tests/**`, `internal/e2e/**`, `frontend/src/e2e/**`, `**/*.test.ts`, `internal/testutil/**`, `frontend/src/test/**`, `frontend/src/test-setup.ts`, `frontend/src/docs/test-editor.ts`, `**/__fixtures__/**` |
-| `ai.md` | `internal/ai/**`, `frontend/src/ai/**` (not built yet) |
+| `ai.md` | `internal/ai/**`, `internal/agent/**`, `internal/secrets/**`, `frontend/src/ai/**` |
 | `logging.md` | `internal/logs/**`, `internal/app/log*.go`, `internal/app/recover*.go`, `internal/app/privacy*_test.go`, `main.go`, `frontend/src/ipc/log*.ts`, `frontend/src/shell/errors*` |

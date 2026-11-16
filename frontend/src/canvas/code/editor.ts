@@ -16,7 +16,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab, redo, selectAll, 
 import { syntaxHighlighting } from '@codemirror/language';
 import { KIND_HIGHLIGHTER } from './highlight';
 import { LANGUAGES, loadLanguageSupport } from './languages';
-import { measureCode, type CodeMetrics } from './measure';
+import { measureCode, type CodeFields, type CodeMetrics } from './measure';
 import type { History } from '../history';
 import type { ElementId, SceneElement } from '../scene';
 
@@ -44,21 +44,7 @@ export function commitCode(history: History, id: ElementId, code: string, metric
   });
 }
 
-/**
- * A block re-measured in place, at the metrics it now draws with (a new font
- * size): its width is the user's, its code re-wraps to it, and it grows when
- * the code needs more height.
- */
-export function fitToCode(element: SceneElement, metrics: CodeMetrics): void {
-  if (element.type !== 'code') return;
-  const block = element as SceneElement & CodeFields;
-  const size = measureCode(block.code, metrics, block.w);
-  block.h = Math.max(block.h, size.height);
-  block.measuredWidth = size.width;
-  block.measuredHeight = size.height;
-}
-
-type CodeFields = { code: string; measuredWidth: number; measuredHeight: number };
+export { fitToCode } from './measure';
 
 export type CodeEditorRequest = {
   code: string;

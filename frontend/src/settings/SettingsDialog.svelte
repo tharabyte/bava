@@ -25,11 +25,13 @@
     onOpenChange: (open: boolean) => void;
     /** Sections owned elsewhere, after Appearance. */
     sections?: Section[];
+    /** The section shown when the dialog opens; Appearance when absent. */
+    section?: string;
   };
 
   type PageWidth = 'narrow' | 'wide' | 'full';
 
-  let { open = $bindable(), choice, onChoose, pageWidth, onPageWidth, onOpenChange, sections = [] }: Props = $props();
+  let { open = $bindable(), choice, onChoose, pageWidth, onPageWidth, onOpenChange, sections = [], section }: Props = $props();
 
   const widths: { value: PageWidth; label: string }[] = [
     { value: 'narrow', label: t('width.narrow') },
@@ -72,15 +74,18 @@
 
 <Dialog bind:open title={t('settings.title')} size="settings" flush headless {onOpenChange}>
   <div class="bava-settings">
-    <SectionTabs
-      label={t('settings.title')}
-      heading={t('settings.title')}
-      end={closeButton}
-      sections={[
-        { value: 'appearance', label: t('settings.appearance'), icon: 'appearance', content: appearance },
-        ...sections,
-      ]}
-    />
+    {#key section}
+      <SectionTabs
+        label={t('settings.title')}
+        heading={t('settings.title')}
+        end={closeButton}
+        initial={section}
+        sections={[
+          { value: 'appearance', label: t('settings.appearance'), icon: 'appearance', content: appearance },
+          ...sections,
+        ]}
+      />
+    {/key}
   </div>
 </Dialog>
 

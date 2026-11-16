@@ -20,6 +20,9 @@ import Upload from '@lucide/svelte/icons/upload';
 import CommandIcon from '@lucide/svelte/icons/command';
 import Download from '@lucide/svelte/icons/download';
 import Maximize2 from '@lucide/svelte/icons/maximize-2';
+import Plug from '@lucide/svelte/icons/plug';
+import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 import Bold from '@lucide/svelte/icons/bold';
 import Italic from '@lucide/svelte/icons/italic';
 import Underline from '@lucide/svelte/icons/underline';
@@ -240,6 +243,9 @@ export const LUCIDE_ICONS = {
   // Export: what Bava writes out (a zip, a PDF).
   export: Download,
   expand: Maximize2,
+  plug: Plug,
+  refresh: RefreshCw,
+  loader: LoaderCircle,
 } satisfies Record<string, Component>;
 
 export type IconId =

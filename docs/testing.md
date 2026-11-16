@@ -57,6 +57,7 @@ lost and regained focus, and the app's last 40 log lines, so a run that kept not
 | `canvas` | Shapes and an attached arrow, move, undo, redo, D2 diagram, an embed from `/`; reads back shapes, bindings, labels, embed |
 | `export-proof` | System printing to PDF: A4 portrait, Letter landscape, A3 no margins, and a page over 2 MB |
 | `import` | Imports the zip `reopen` wrote into a new folder of that Space: pages, their picture address rewritten, a link kept, a template numbered to keep both |
+| `agent` | Turns on Allow agents and AI edits, connects as the user's own agent with the shown address and code, lists, reads and searches; claims a closed page, adds a text through the page worker, releases it, and checks the stored size is what the window measures; the AI pane shows the steps |
 
 | Step | Takes |
 |---|---|
@@ -70,6 +71,8 @@ lost and regained focus, and the app's last 40 log lines, so a run that kept not
 | `zip` | `target`, `text`: `holds=` and `lacks=`, items apart by `;` |
 | `pdffile` | `target`, `text`: `min=` sheets, `first=` / `last=` size in mm |
 | `pdf` | `target`, `name` as `paper/orientation/margins[/heavy]`, `text` as `pages=2 size=210x297` |
+| `agent` | `target` (a tool), `name` (its arguments as JSON; `${VERSION}` is the last version read), `text` its answer must hold |
+| `measure` | `target` (a page in the scratch folder), `name` (a text element's id): its stored size equals what the window measures |
 
 Inside the Mac App Store's sandbox, the `store walks (macos)` job packs
 the end-to-end build as an `.app`, signs it ad hoc with

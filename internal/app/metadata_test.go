@@ -101,8 +101,9 @@ func TestEveryPlatformFileNamesTharabytesApp(t *testing.T) {
 }
 
 // The Mac App Store's sandbox, as CI signs the sandboxed run: what the user
-// chooses is kept across launches, a web card may be fetched, a page may be
-// printed, and nothing more is asked for.
+// chooses is kept across launches, a web card may be fetched, the user's own
+// agent may connect on this computer, a page may be printed, and nothing
+// more is asked for.
 func TestTheSandboxEntitlementsAskForWhatBavaUsesAlone(t *testing.T) {
 	content, err := os.ReadFile(testutil.RepoPath(t, "build", "darwin", "entitlements.sandbox.plist"))
 	if err != nil {
@@ -118,6 +119,7 @@ func TestTheSandboxEntitlementsAskForWhatBavaUsesAlone(t *testing.T) {
 		"com.apple.security.files.user-selected.read-write",
 		"com.apple.security.files.bookmarks.app-scope",
 		"com.apple.security.network.client",
+		"com.apple.security.network.server",
 		"com.apple.security.print",
 	}
 	if strings.Join(got, " ") != strings.Join(want, " ") {

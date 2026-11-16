@@ -1,0 +1,27 @@
+{
+  "name": "agent",
+  "folders": ["${SCRATCH}/Smoke"],
+  "steps": [
+    { "do": "wait", "target": "header", "timeoutMs": 30000 },
+    { "do": "menu", "target": "file.openSpace" },
+    { "do": "wait", "target": "[data-path='First page.md']" },
+    { "do": "menu", "target": "app.settings" },
+    { "do": "click", "target": ".bava-section-tab[data-value='ai']" },
+    { "do": "wait", "target": "[data-ai-settings]" },
+    { "do": "click", "target": "[data-allow-edits] .bava-toggle" },
+    { "do": "click", "target": "[data-allow-agents] .bava-toggle" },
+    { "do": "wait", "target": "[data-agent-code]", "timeoutMs": 45000 },
+    { "do": "key", "text": "Escape" },
+    { "do": "agent", "target": "list_pages", "text": "First page.md", "timeoutMs": 20000 },
+    { "do": "agent", "target": "read_page", "name": "{\"path\":\"First page.md\"}", "text": "[b1]" },
+    { "do": "agent", "target": "search", "name": "{\"query\":\"smoke\"}", "text": "First page.md" },
+    { "do": "agent", "target": "claim_page", "name": "{\"path\":\"First page.md\"}", "text": "Claimed First page.md" },
+    { "do": "agent", "target": "read_page", "name": "{\"path\":\"First page.md\"}", "text": "Version:" },
+    { "do": "agent", "target": "change_canvas", "name": "{\"path\":\"First page.md\",\"version\":\"${VERSION}\",\"changes\":[{\"op\":\"add\",\"element\":{\"id\":\"walk-note\",\"type\":\"text\",\"text\":\"Sized in the page worker\",\"x\":0,\"y\":900}}]}", "text": "added walk-note" },
+    { "do": "agent", "target": "release_page", "name": "{\"path\":\"First page.md\"}", "text": "Released First page.md" },
+    { "do": "measure", "target": "Smoke/First page.md", "name": "walk-note" },
+    { "do": "menu", "target": "view.ai" },
+    { "do": "wait", "target": "[data-agent-pane] [data-tool='read_page'][data-state='done']" },
+    { "do": "shot", "name": "agent view" }
+  ]
+}

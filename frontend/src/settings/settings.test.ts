@@ -92,6 +92,20 @@ describe('settings', () => {
     expect(go).toContain(`ArrowBinding: ${SETTINGS_DEFAULTS.arrowBinding},`);
     expect(go).toContain(`MidpointSnap: ${SETTINGS_DEFAULTS.midpointSnap},`);
     expect(go).toContain(`ObjectSnap: ${SETTINGS_DEFAULTS.objectSnap},`);
+    expect(constant('DefaultAgentPort')).toBe(SETTINGS_DEFAULTS.agentPort);
+    expect(go).toContain(`AllowAgents:  ${SETTINGS_DEFAULTS.allowAgents},`);
+    expect(go).toContain(`AllowAIEdits: ${SETTINGS_DEFAULTS.allowAIEdits},`);
+  });
+
+  it('saves the AI settings with the rest', async () => {
+    const stored = io();
+    const settings = createSettings(stored);
+    await settings.load();
+    await settings.setAllowAgents(true);
+    await settings.setAgentPort(7400);
+    await settings.setAllowAIEdits(true);
+    expect(stored.save).toHaveBeenLastCalledWith(expect.objectContaining({ allowAgents: true, agentPort: 7400, allowAIEdits: true }));
+    expect([settings.allowAgents, settings.agentPort, settings.allowAIEdits]).toEqual([true, 7400, true]);
   });
 
   // Go owns the verbose flag: it changes the live log level as well as the

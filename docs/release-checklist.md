@@ -136,6 +136,13 @@ Start Bava as if it had never run:
 - [ ] Icons at 16px (Finder list, Windows taskbar, Linux launcher) and 1024px.
 - [ ] The mark in the title bar, the empty state and About.
 
+## Your own agent
+
+- [ ] With Allow agents on, an agent you run (such as a coding assistant's MCP client) connects with the address and code AI settings show, on each system and inside each store's package; with a new code, it is turned away until given the new one.
+- [ ] The agent reads, claims and changes a page that is open and one that is not; the open page goes read-only with the bar, the tree mark and the pane's list; Stop gives it back with the changes kept; ⌘Z on each page takes them back, the closed one after opening it.
+- [ ] Canvas text the agent adds to a closed page looks the same once the page is opened as the same text typed by hand.
+- [ ] The Keychain, Credential Manager or the Flatpak portal keeps the code across a restart; on first use a Mac may ask once to allow Bava its own item.
+
 ## Logs and errors
 
 - [ ] In a release build, a forced Go panic and a frontend exception both land in the log folder.

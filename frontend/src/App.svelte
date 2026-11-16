@@ -12,7 +12,7 @@
   import InsertPanel from './components/InsertPanel.svelte';
   import { createInsert, ICON_CATEGORY } from './shell/insert.svelte';
   import { createIconPicker } from './shell/icon-picker.svelte';
-  import { loadSet, loadedSet, type IconEntry } from './canvas/icons/sets';
+  import  { parseIconName, loadSet, loadedSet, type IconEntry } from './canvas/icons/sets';
   import { createIconLibrary } from './canvas/icons/library';
   import { setsWanted } from './canvas/icons/wanted';
   import { placedIcon } from './canvas/add-icon';
@@ -25,7 +25,7 @@
   import { findOnCanvas } from './canvas/find';
   import FindBar from './components/FindBar.svelte';
   import { createExporter, exportIO } from './canvas/export/exporter.svelte';
-  import { CodeEditor, commitCode, fitToCode } from './canvas/code/editor';
+  import { CodeEditor, commitCode } from './canvas/code/editor';
   import { createCodeRuns } from './canvas/code/runs';
   import { createPictureLoader, loadPicture, pictureAddress, pngData } from './canvas/pictures';
   import { placedPicture } from './canvas/add-picture';
@@ -36,7 +36,6 @@
   import type { Paper as BoundPaper } from '../bindings/github.com/tharabyte/bava/internal/pdfprint/models';
   import { measureCode } from './canvas/code/measure';
   import { invalidateAdvanceOnFontLoad } from './canvas/code/advance';
-  import { monoAdvance } from './canvas/code/advance';
   import ExportDialog from './components/ExportDialog.svelte';
   import PageExportDialog from './components/PageExportDialog.svelte';
   import SpaceExportDialog from './components/SpaceExportDialog.svelte';
@@ -99,11 +98,12 @@
   import { wheelAction } from './canvas/navigation';
   import { LabelEditor, commitIconLabel, commitLabel, commitTable, commitText, editableAt, insertText, labelBox, tableText } from './canvas/label-editor';
   import { iconLabelSize } from './canvas/icons/icon-look';
+  import { createFitter } from './canvas/fit';
   import { TABLE_PAD } from './canvas/table-layout';
   import { canvasLineWidth, measureFor } from './canvas/text-measure';
   import { carriedPictures, readCanvasClipboard } from './canvas/clipboard-read';
   import { PASTED_TEXT_WIDTH, isWrapped, longestLine, pastedText, textSize } from './canvas/paste-text';
-  import { growToLabel, labelHeight } from './canvas/label-box';
+  import { growToLabel } from './canvas/label-box';
   import { wrapLines } from './canvas/text-layout';
   import { applyStyle, brandOf, colourIsIcons, currentStyle, CODE_FONT_SIZE, setProperty, shownProperty, type PropertyKey } from './canvas/style';
   import SelectionToolbar from './components/SelectionToolbar.svelte';
@@ -153,11 +153,28 @@
   } from './shell/shortcuts';
   import menuSpec from '../../internal/app/menu/spec.json';
   import { Browser, Events } from '@wailsio/runtime';
+  import { AnswerError, listenForAsks } from './ai/answers';
+  import AgentPane from './ai/AgentPane.svelte';
+  import AISection from './settings/AISection.svelte';
+  import { createAgentView, type AgentStatus, type Step } from './ai/agent-status.svelte';
+  import { createClaims, TYPING_PAUSE, waitForPause } from './ai/claims.svelte';
+  import { createBefore } from './ai/before';
+  import { createSummary } from './ai/summary.svelte';
+  import ClaimBar from './ai/ClaimBar.svelte';
+  import { applyToOpen } from './ai/apply';
+  import { expandDiagrams } from './ai/diagrams';
+  import { screenIcons } from './ai/icon-check';
+  import { screenDocument } from './ai/doc-checks';
+  import { checkers } from './ai/checkers';
+  import type { PageEdit } from './ai/page-edits';
+  import { SIZING_VARIABLES } from './canvas/fit';
+  import { pageAnswers } from './ai/page-answers';
+  import { pageWork } from './ai/page-worker-client';
   import { systemClipboard } from './ipc/clipboard';
   import { followAction, followBeside, joinFile, outsideTarget, resolveLink, type Move } from './docs/links';
   import { relinkEdits } from './docs/page-links';
   import { addMedia, type MediaFile } from './docs/add-media';
-  import { ExportService, FileService, IconService, LogService, MenuService, SpaceService } from '../bindings/github.com/tharabyte/bava/internal/app';
+  import { AgentService, ExportService, FileService, IconService, LogService, MenuService, SpaceService } from '../bindings/github.com/tharabyte/bava/internal/app';
   import { t } from './i18n/t';
   import { createSearch } from './files/search.svelte';
   import type { SearchHit } from './files/space.svelte';
@@ -186,14 +203,10 @@
   });
   // The style a new element takes: the last chosen, for this session.
   const newElementStyle = createCurrentStyle();
+  // Sizing as drawn, shared with the page worker.
+  const fitter = createFitter(readRootVariable);
   /** The height a labelled shape needs for its label as drawn: it never stays shorter. */
-  function shapeLabelHeight(element: SceneElement): number {
-    const label = (element as { label?: string }).label;
-    if (!label) return 0;
-    const paint = paintFor(element, readRootVariable);
-    const inset = parseFloat(readRootVariable('--size-label-inset')) || 0;
-    return labelHeight(element.type, element.w, element.h, label, inset, paint.font, canvasLineWidth(`${paint.font.size}px ${paint.font.family}`));
-  }
+  const shapeLabelHeight = (element: SceneElement) => fitter.shapeLabelHeight(element);
 
   /** A shape from D2 diagram grown to its label about its centre, where the layout placed it. */
   function fitArriving(element: SceneElement) {
@@ -205,15 +218,7 @@
 
   /** After a style change: a code block refitted, a shape grown to its label. */
   function refit(element: SceneElement) {
-    fitToCode(element, codeMetrics(element));
-    growToLabel(element, shapeLabelHeight);
-    // An icon's label measured again at its new size.
-    if (element.type === 'icon' && element.label) {
-      const paint = paintFor(element, readRootVariable);
-      const size = iconLabelSize(element, element.label, canvasLineWidth(`${paint.font.size}px ${paint.font.family}`), paint.font);
-      element.measuredWidth = size.width;
-      element.measuredHeight = size.height;
-    }
+    fitter.refit(element);
   }
 
   const pointer = createPointerHandler({
@@ -284,13 +289,7 @@
    * the block's own size when given one.
    */
   function codeMetrics(element?: SceneElement) {
-    // Absent means the file format's 13, as the stage draws it.
-    const size = (element as { fontSize?: number } | undefined)?.fontSize ?? CODE_FONT_SIZE;
-    return {
-      advance: monoAdvance(size, readRootVariable('--font-mono').trim()),
-      lineHeight: size * (parseFloat(readRootVariable('--leading-code')) || 0),
-      padding: parseFloat(readRootVariable('--size-code-padding')) || 0,
-    };
+    return fitter.codeMetrics(element);
   }
 
   /**
@@ -523,6 +522,54 @@
   // Whether Copy Styles has copied anything, for the native menu.
   let canPasteStyles = $state.raw(false);
   let settingsOpen = $state(false);
+  // The section Settings opens at: AI when the AI pane asks, else the first.
+  let settingsSection = $state<string | undefined>(undefined);
+
+  // What the user's own agent is doing in Bava, for the AI pane and settings.
+  const agentView = createAgentView();
+  // The pages the AI holds, read-only for the user, and when they last typed.
+  const claims = createClaims();
+  // The record of the agent's round, shown when its last claim ends.
+  const roundSummary = createSummary();
+  /** The user's Stop on a page the AI holds: what it changed stays, nothing more comes. */
+  function stopClaim(page: string) {
+    void AgentService.StopClaim(page);
+  }
+  // Pages the AI changed off screen, as they were before, for ⌘Z on opening.
+  const before = createBefore();
+  // How often each page's broken D2 or equations have gone back to the AI.
+  const docTries = new Map<string, number>();
+  /** The AI's change checked before it goes in: icon names, then D2 and equations. */
+  async function screenAgentChange(path: string, change: PageEdit) {
+    const icons = await screenAgentIcons(change);
+    const checked = await screenDocument(icons.edit, path, checkers, docTries);
+    return { edit: checked.edit, refused: [...icons.refused, ...checked.refused], notes: checked.notes };
+  }
+
+  /** The AI's icon names checked against every set, the bundled ones loaded first. */
+  async function screenAgentIcons(change: PageEdit) {
+    await Promise.all((['line', 'solid', 'logo'] as const).map((set) => loadSet(set)));
+    return screenIcons(change, (name) => {
+      const ref = parseIconName(name);
+      return ref !== null && (loadedSet(ref.set) ?? []).some((icon) => icon.name === ref.name);
+    });
+  }
+
+  /** The bundled fonts, for the page worker to measure with as the window does. */
+  const pageFonts = () => ({
+    Geist: new URL('/fonts/Geist-Variable.woff2', location.href).href,
+    'Geist Mono': new URL('/fonts/GeistMono-Variable.woff2', location.href).href,
+  });
+  let lastEditAt = 0;
+  /** The plug follows AI settings: allowed or not, its port, whether the AI may edit. */
+  async function configureAgent() {
+    try {
+      const status = await AgentService.Configure(settingsState.allowAgents, settingsState.agentPort, settingsState.allowAIEdits);
+      agentView.status(status as AgentStatus);
+    } catch (error) {
+      void report(error, 'agent-configure');
+    }
+  }
   // The right-click menu, and where it opens.
   let contextMenu = $state.raw<{ items: MenuNode[]; anchor: { x: number; y: number } } | null>(null);
 
@@ -674,6 +721,8 @@
 
   // The splash covers the window until settings and fonts have loaded.
   const settingsLoad = settingsState.load();
+  // Agents connect only once the settings say they may.
+  void settingsLoad.then(configureAgent);
   const launch = createLaunch({
     settings: settingsLoad,
     // jsdom has no FontFaceSet.
@@ -826,9 +875,11 @@
   // is on screen, unsaved words and drawing included.
   let searchOpen = $state(false);
   let searchReturn: HTMLElement | null = null;
+  /** The open page as searched and read: as it is on screen, unsaved words and drawing included. */
+  const openAsOnScreen = () => (openRel && doc.isOpen ? { path: openRel, source: docPane?.markdown() ?? doc.source, scene: currentScene() } : null);
   const spaceSearch = createSearch({
     search: (query, open) => space.search(query, open),
-    open: () => (openRel && doc.isOpen ? { path: openRel, source: docPane?.markdown() ?? doc.source, scene: currentScene() } : null),
+    open: openAsOnScreen,
   });
 
   async function openSearch() {
@@ -1031,6 +1082,17 @@
     canvasChanged();
   }
 
+  /** The canvas history starting from before the AI's change: ⌘Z takes it back. */
+  function startCanvasFrom(elements: unknown[]) {
+    const now = history.current.elements;
+    history.reset({ elements: elements as never });
+    history.mutate((draft) => {
+      draft.elements = structuredClone(now) as never;
+    }, 'ai');
+    published = history.current;
+    canvasChanged();
+  }
+
   /**
    * A save asked for by hand that Go refused (it answered, and wrote nothing)
    * says why in the status bar; otherwise the page stays unsaved with no word.
@@ -1166,6 +1228,12 @@
 
   // The open page relative to its Space, or null for no page or a loose one.
   const openRel = $derived(doc.path ? space.relative(doc.path) : null);
+  // A page the AI holds is read-only for the user: document and canvas.
+  const openHeld = $derived(claims.holds(openRel));
+  $effect(() => {
+    history.hold(openHeld);
+    docPane?.setHeld(openHeld);
+  });
   // Where the open page's images and videos load from: its Space, or the
   // folder of a page opened on its own.
   const mediaPlace = $derived.by(() => {
@@ -3189,6 +3257,7 @@
       aboutOpen = true;
     },
     'app.settings': () => {
+      settingsSection = undefined;
       settingsOpen = true;
     },
     'file.new': newPage,
@@ -3212,6 +3281,7 @@
     'file.save': save,
     'file.saveAs': saveAs,
     'file.settings': () => {
+      settingsSection = undefined;
       settingsOpen = true;
     },
     'file.export': () => exporter.open({ onlySelected: false }),
@@ -3499,6 +3569,8 @@
         updateCursor();
         return;
       }
+      // The AI holds the page: it can be looked at and panned, not changed.
+      if (history.held) return;
       // Text is placed with a click and typed; it is not a drag.
       if (tools.active === 'text') return;
       pointer.down(scenePoint(event), { additive: event.shiftKey, alt: event.altKey, mod: event.metaKey || event.ctrlKey, shift: event.shiftKey });
@@ -3906,7 +3978,77 @@
       .then((notices) => (notices ?? []).forEach((notice) => errors.notice(notice as GoNotice)))
       .catch((error: unknown) => void report(error, 'notices'));
 
+    // The user's own agent: whether it is connected, and each tool it runs.
+    const offAgentStatus = Events.On('agent:status', (event) => agentView.status(event.data as AgentStatus));
+    const offAgentStep = Events.On('agent:step', (event) => {
+      const step = event.data as Step;
+      agentView.step(step);
+      if (step.tool === 'create_page' && step.state === 'done') roundSummary.created(step.subject);
+    });
+    // A page the agent created arrives claimed: the tree is read again to show it.
+    const offAgentClaims = Events.On('agent:claims', (event) => {
+      claims.set((event.data as string[] | null) ?? []);
+      roundSummary.claims(claims.pages);
+      if (space.root) void space.refresh();
+    });
+    // The user's own agent asks what only the window knows.
+    const offAgentAsks = listenForAsks(
+      pageAnswers({
+        root: () => space.root,
+        open: openAsOnScreen,
+        openDoc: () => (openRel && doc.isOpen ? (docPane?.currentDoc() ?? null) : null),
+        elements: () => history.current.elements,
+        selectedIds: () => selectedIds,
+        selectedText: () => docPane?.selectedText() ?? '',
+        icons: async () => [
+          ...(await Promise.all((['line', 'solid', 'logo'] as const).map((set) => loadSet(set)))).flat(),
+          ...(loadedSet('custom') ?? []),
+        ],
+        readClosed: (work) => pageWork.read(work),
+        holds: (path) => claims.holds(path),
+        // Claiming the open page: the user's words saved first, then read-only.
+        // The AI's changes: the open page in its editor and scene, then saved;
+        // a page not on screen in the worker, its state from before kept.
+        applyOpen: async (path, change) => {
+          const view = docPane?.editorView();
+          if (!view) throw new AnswerError(`${path} is not shown yet; try again.`);
+          const screened = await screenAgentChange(path, change);
+          const drawn = expandDiagrams(screened.edit, history.current.elements, { fit: fitArriving, resolveIcon: resolveD2Icon });
+          const answer = applyToOpen(path, { view, history, pageLocked: docPane?.pageLocked() ?? false }, drawn, fitter);
+          answer.report.refused.unshift(...screened.refused);
+          answer.report.applied.push(...screened.notes);
+          if (!answer.stale && !answer.locked) roundSummary.record(path, answer.report);
+          commit();
+          if (answer.report.applied.length > 0) await save();
+          return answer;
+        },
+        applyClosed: async (path, file, change) => {
+          const theme = Object.fromEntries(SIZING_VARIABLES.map((name) => [name, readRootVariable(name)]));
+          const existing = ((file.scene as { elements?: SceneElement[] }).elements ?? []) as SceneElement[];
+          const screened = await screenAgentChange(path, change);
+          const drawn = expandDiagrams(screened.edit, existing, { fit: fitArriving, resolveIcon: resolveD2Icon });
+          const answer = await pageWork.apply({ kind: 'apply', path, file, edit: drawn, theme, fonts: pageFonts() });
+          answer.report.refused.unshift(...screened.refused);
+          answer.report.applied.push(...screened.notes);
+          if (answer.file) before.remember(path, file);
+          if (answer.file) roundSummary.record(path, answer.report);
+          return answer;
+        },
+        claimOpen: async (path) => {
+          await waitForPause(() => lastEditAt, TYPING_PAUSE);
+          if (docPane?.pageLocked()) return true;
+          claims.holdNow(path);
+          if (doc.dirty) await save();
+          return false;
+        },
+      }),
+    );
+
     return () => {
+      offAgentAsks();
+      offAgentStatus();
+      offAgentStep();
+      offAgentClaims();
       removeErrorHandlers();
       offAppError();
       offProgress();
@@ -3961,7 +4103,13 @@
   $effect(() => {
     const pane = docPane;
     void doc.generation;
-    untrack(() => pane?.setPage(doc.source, doc.path));
+    untrack(() => {
+      // A page the AI changed while it was not on screen opens with its undo
+      // history starting from before the AI's first change.
+      const prior = openRel ? before.take(openRel) : null;
+      pane?.setPage(doc.source, doc.path, prior?.source ?? null);
+      if (prior) startCanvasFrom((prior.scene as { elements?: unknown[] }).elements ?? []);
+    });
   });
 
   // The native menu shows checks and enabled items from this state. Go never
@@ -4068,6 +4216,7 @@
         activePath={openRel}
         reveal={revealing}
         unsavedPath={doc.dirty ? openRel : null}
+        claimedPaths={claims.pages}
         {renameRequest}
         menuPath={treeMenuAt?.path ?? null}
         onRenameStarted={() => (renameRequest = null)}
@@ -4135,6 +4284,39 @@
   />
 {/snippet}
 
+{#snippet aiSettings()}
+  <AISection
+    allowEdits={settingsState.allowAIEdits}
+    allowAgents={settingsState.allowAgents}
+    port={settingsState.agentPort}
+    status={agentView.current}
+    onAllowEditsChange={(on) => void settingsState.setAllowAIEdits(on).then(reportSettingsError).then(configureAgent)}
+    onAllowAgentsChange={(on) => void settingsState.setAllowAgents(on).then(reportSettingsError).then(configureAgent)}
+    onPortChange={(port) => void settingsState.setAgentPort(port).then(reportSettingsError).then(configureAgent)}
+    onNewCode={() => void AgentService.NewCode().then((status) => agentView.status(status as AgentStatus))}
+    onCopy={(text) => void copyText(text, t('settings.ai.copied'))}
+  />
+{/snippet}
+
+{#snippet aiPane()}
+  <AgentPane
+    status={agentView.current}
+    lines={agentView.lines}
+    claimed={claims.pages}
+    summary={roundSummary.shown}
+    onStop={(page) => stopClaim(page)}
+    onOpenSettings={() => {
+      settingsSection = 'ai';
+      settingsOpen = true;
+    }}
+    onClear={() => {
+      agentView.clear();
+      roundSummary.clear();
+    }}
+    onClose={() => view.toggleAI()}
+  />
+{/snippet}
+
 {#snippet advancedSettings()}
   <AdvancedSection
     verbose={settingsState.verboseLogging}
@@ -4167,9 +4349,12 @@
   onPageWidth={(width) => void settingsState.setPageWidth(width)}
   {view}
   bind:settingsOpen
+  {settingsSection}
+  ai={aiPane}
   settings={[
     { value: 'files', label: t('settings.files'), icon: 'folder', content: filesSettings },
     { value: 'canvas', label: t('settings.canvas'), icon: 'grid', content: canvasSettings },
+    { value: 'ai', label: t('settings.ai'), icon: 'ai', content: aiSettings },
     { value: 'advanced', label: t('settings.advanced'), icon: 'code', content: advancedSettings },
   ]}
   onPanelError={(panel, error) => void report(error, `panel:${panel}`)}
@@ -4242,6 +4427,7 @@
     {/if}
   {/snippet}
   {#snippet document()}
+    {#if openHeld}<ClaimBar onStop={() => openRel && stopClaim(openRel)} />{/if}
     {#if editingTemplate}
       <TemplateBar group={editingTemplate.group} name={editingTemplate.name} onDone={() => void doneWithTemplate()} />
     {/if}
@@ -4254,6 +4440,7 @@
       spaceWidth={space.pageWidth}
       appWidth={settingsState.pageWidth}
       onEdit={() => {
+        lastEditAt = Date.now();
         doc.touch();
         autosave.changed();
       }}
@@ -4301,6 +4488,7 @@
   {#snippet canvas()}
     <div class="canvas-region" data-file-drop-target data-pictures={picturesLoading > 0 ? 'loading' : 'ready'} data-icons={iconsLoading > 0 ? 'loading' : 'ready'}>
       <div class="fill" bind:this={canvasHost}></div>
+      {#if openHeld && !view.showsDocument}<div class="canvas-claim"><ClaimBar onStop={() => openRel && stopClaim(openRel)} /></div>{/if}
       {#if canvasFinding}
         <div class="canvas-find">
           <FindBar
@@ -4358,18 +4546,21 @@
           />
         </div>
       {/if}
-      <ToolRail
-        active={tools.active}
-        {insertOpen}
-        onSelect={(tool) => {
-          insertOpen = false;
-          tools.activate(tool);
-        }}
-        onInsert={() => (insertOpen ? closeInsertPanel() : openInsertPanel())}
-        locked={tools.locked}
-        onLock={() => tools.toggleLock()}
-      />
-      {#if insertOpen}
+      <!-- The AI holds the page: nothing to draw with until it lets go. -->
+      {#if !openHeld}
+        <ToolRail
+          active={tools.active}
+          {insertOpen}
+          onSelect={(tool) => {
+            insertOpen = false;
+            tools.activate(tool);
+          }}
+          onInsert={() => (insertOpen ? closeInsertPanel() : openInsertPanel())}
+          locked={tools.locked}
+          onLock={() => tools.toggleLock()}
+        />
+      {/if}
+      {#if insertOpen && !openHeld}
         <div class="insert-panel">
           <InsertPanel
             {insert}
@@ -4973,6 +5164,13 @@
     position: absolute;
     top: var(--space-3);
     right: var(--space-3);
+    z-index: var(--z-chrome);
+  }
+
+  /* Across the top of the canvas while the AI holds the page. */
+  .canvas-claim {
+    position: absolute;
+    inset: 0 0 auto 0;
     z-index: var(--z-chrome);
   }
 </style>

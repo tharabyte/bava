@@ -24,6 +24,9 @@ type Options struct {
 	// RecentLog is the app's last log lines, written under a failed result
 	// so a run that kept nothing else still says what led up to it.
 	RecentLog func() []string
+	// Agent is where the agent plug listens and its code, both empty while
+	// agents are not allowed: an agent step connects as the user's agent.
+	Agent func() (address, code string)
 }
 
 // Service is bound to the page in a -tags e2e build: the page's driver asks
@@ -32,6 +35,8 @@ type Service struct {
 	options Options
 	mu      sync.Mutex
 	shots   int
+	// version is the last page version an agent step was answered with.
+	version string
 }
 
 // NewService is the service a -tags e2e build registers.

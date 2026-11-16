@@ -30,6 +30,11 @@ Open submenus by keyboard. Selection-moving clicks use `{ delay: 50 }`.
 The stand-in returns what Go returns, error codes included. Canvas walks seed
 scenes (`seedScene`, `openCanvas`) and assert `savedScene`, not pixels.
 
+## Bindings through the index
+The browser stand-in replaces `internal/app`'s index: import a service from
+it, never from its generated file, or the call goes to a Go that is not
+there and never answers.
+
 ## End-to-end
 A `file` step checks what reached disk. Native accelerators are `menu` steps.
 `type` goes a character at a time, or typing shortcuts read it as a paste. The

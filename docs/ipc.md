@@ -1,8 +1,8 @@
 # IPC
 
 The Go services the frontend calls, registered in `main.go`: `RenderService`,
-`FileService`, `SpaceService`, `ExportService`, `MenuService` and
-`LogService`. Generated bindings land in
+`FileService`, `SpaceService`, `ExportService`, `MenuService`,
+`LogService` and `AgentService`. Generated bindings land in
 `frontend/bindings/github.com/tharabyte/bava/internal/app/`. Keep the surface
 small: every method must survive a Wails beta upgrade.
 
@@ -292,3 +292,35 @@ and event hooks, ends the process instead; the next launch reports the
 unexpected exit.
 
 Every path the user picks through a dialog, or drops, is kept for a store's sandbox (`internal/access`).
+
+## AgentService
+
+The page's side of the agent plug: an MCP server on `127.0.0.1` (`internal/agent`), the second place Bava touches the network after the web card fetch, on loopback only, behind the connection code, while AI settings allow agents. Nothing reaches beyond this computer.
+
+| Method | Returns |
+|---|---|
+| `Configure(allowAgents, port, allowEdits)` | `{on, address, code, codeKept, connected, editing, problem}`; the page calls it at launch and on each change to AI settings. `problem` is `portInUse` (another program holds the port), `start` (it could not be opened otherwise) or empty; a safe that cannot be read gives a code for this run only (`codeKept` false). Agents or edits off release every claim |
+| `NewCode()` | the status, with a fresh connection code kept in the password safe; agents using the old one are dropped |
+| `Status()` | the status now |
+| `Answer(id, result, failure)` | nothing: the page's answer to `agent:ask`, `result` as JSON or `failure` saying why; a late answer is dropped |
+| `StopClaim(page)` | nothing: the user's Stop; the changes made stay, the page refuses more this round |
+| `Claims()` | the pages the AI holds now |
+
+The connection code is a credential: it crosses this binding only to be shown and copied, and is never logged.
+
+### `agent:ask` (Go to frontend)
+
+`{id, kind, args}`: what only the page knows, answered with `Answer(id, …)` within 10 s, else the tool fails. A closed window fails every question in flight at once.
+
+| Kind | Args | Answer |
+|---|---|---|
+| `space` | none | `{root, open: {path, source, scene}}` (the page as on screen), or null with no Space |
+| `pageText` | `{path, file}` | `{text}`: the page as the AI reads it, with its version, block numbers and element ids. `file` (`{source, scene}`, read by Go) is sent for a page not on screen, which the page worker reads |
+| `selection` | none | `{text}`: the selected elements or words |
+| `icons` | `{query}` | `{names}`: icon names as a canvas stores them |
+| `claim` | `{path, file}` | `{locked}`: the open page waits for a pause in typing, is held, then saved; a closed page's lock is read from `file` |
+| `apply` | `{path, edit, file}` | `{text, report: {applied, refused}, stale?, locked?, file?}`: the AI's changes, in the open page's editor and scene, or for a page not on screen in the page worker, whose new `file` Go saves only if the page still reads as it did |
+
+### `agent:claims`, `agent:status`, `agent:step` (Go to frontend)
+
+`agent:claims` carries the pages the AI holds after each change: each is read-only in the window, marked in the tree, listed in the AI pane. `agent:status` carries the status when an agent connects or goes. `agent:step` carries `{id, tool, state, subject}` as each tool call starts and ends (`running`, `done`, `failed`, `unavailable`).

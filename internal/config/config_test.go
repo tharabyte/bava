@@ -23,7 +23,8 @@ func TestDefaultsWhenTheFileIsAbsent(t *testing.T) {
 
 func TestSettingsRoundTripThroughDisk(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
-	want := config.Settings{DebounceMS: 400, LayoutEngine: "dagre", Autosave: config.AutosaveAfterDelay, AutosaveDelayMS: 2500, PageWidth: "narrow"}
+	want := config.Settings{DebounceMS: 400, LayoutEngine: "dagre", Autosave: config.AutosaveAfterDelay, AutosaveDelayMS: 2500, PageWidth: "narrow",
+		AllowAgents: true, AgentPort: 7400, AllowAIEdits: true}
 
 	if err := config.SaveTo(path, want); err != nil {
 		t.Fatalf("SaveTo: %v", err)
@@ -273,6 +274,32 @@ func TestPageWidthDefaultsToWideAndRefusesOthers(t *testing.T) {
 		}
 		if settings.PageWidth != want {
 			t.Errorf("pageWidth %q read as %q, want %q", value, settings.PageWidth, want)
+		}
+	}
+}
+
+// The AI is off until the user turns it on: no agent may connect and no
+// AI may change a page on a fresh install.
+func TestAgentsAndAIEditsStartOff(t *testing.T) {
+	d := config.Defaults()
+	if d.AllowAgents || d.AllowAIEdits {
+		t.Errorf("defaults allow agents %v, AI edits %v; want both off", d.AllowAgents, d.AllowAIEdits)
+	}
+	if d.AgentPort != config.DefaultAgentPort {
+		t.Errorf("AgentPort = %d, want %d", d.AgentPort, config.DefaultAgentPort)
+	}
+}
+
+// A port no program may listen on as a user falls back to the default.
+func TestAgentPortOutOfRangeFallsBack(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	for _, bad := range []string{"0", "80", "70000", "-5"} {
+		if err := os.WriteFile(path, []byte(`{"agentPort": `+bad+`}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		settings, _ := config.LoadFrom(path)
+		if settings.AgentPort != config.DefaultAgentPort {
+			t.Errorf("agentPort %s: got %d, want the default", bad, settings.AgentPort)
 		}
 	}
 }

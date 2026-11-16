@@ -144,8 +144,29 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     arrowBinding: true,
     midpointSnap: true,
     objectSnap: false,
+    allowAgents: false,
+    agentPort: 7341,
+    allowAIEdits: false,
   };
   let settingsRead = false;
+  /** The agent plug, as Go's AgentService keeps it. */
+  const agent = { on: false, port: 0, editing: false, code: 'K7Q2-9XFM-T4WD-3HNP', connected: 0, portInUse: false };
+  const agentStatus = () => ({
+    on: agent.on,
+    address: agent.on ? `http://127.0.0.1:${agent.port}/bava` : '',
+    code: agent.on ? agent.code : '',
+    codeKept: true,
+    connected: agent.on ? agent.connected : 0,
+    editing: agent.editing,
+    problem: agent.portInUse && !agent.on ? 'portInUse' : '',
+  });
+  /** Questions the stand-in agent asked the page, waiting for its answer by id. */
+  const asks = new Map<string, (answer: { result: string; failure: string }) => void>();
+  let askCount = 0;
+  const sendAgent = (name: string, data: unknown) => {
+    const wails = (globalThis as { _wails?: { dispatchWailsEvent(event: { name: string; data: unknown }): void } })._wails;
+    wails?.dispatchWailsEvent({ name, data });
+  };
   /** Each canvas embed's picture saved, in base64, by its name. */
   const pictures = new Map<string, string>();
   let trashIds = 100;
@@ -513,6 +534,37 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     askedForFiles: [] as string[],
     chosenFiles: [] as string[],
     openedFiles: [] as string[],
+    /**
+     * A question to the page, as Go's agent plug asks one (`agent:ask`), and
+     * the page's answer: its result parsed, or why it could not answer.
+     */
+    agentAsk(kind: string, args: unknown): Promise<{ result: unknown; failure: string }> {
+      askCount += 1;
+      const id = `ask-${askCount}`;
+      return new Promise((resolve) => {
+        asks.set(id, ({ result, failure }) => resolve({ result: result ? JSON.parse(result) : null, failure }));
+        sendAgent('agent:ask', { id, kind, args });
+      });
+    },
+    /** The pages the AI holds, as Go tells the window. */
+    agentClaims(pages: string[]) {
+      sendAgent('agent:claims', pages);
+    },
+    /** Stops asked for, by page, as Go's StopClaim hears them. */
+    stopped: [] as string[],
+    /** An agent connecting (or going) as Go tells the window. */
+    agentConnects(count: number) {
+      agent.connected = count;
+      sendAgent('agent:status', agentStatus());
+    },
+    /** A tool call starting or ending, as Go tells the window. */
+    agentStep(step: { id: string; tool: string; state: string; subject: string }) {
+      sendAgent('agent:step', step);
+    },
+    /** Another program holds the agent port the next time the plug opens. */
+    agentPortBusy(busy: boolean) {
+      agent.portInUse = busy;
+    },
     /** The settings as last saved, for a test to read what a control changed. */
     settings: () => ({ ...settings }),
     /** The canvas embeds' pictures saved, in base64, by name. */
@@ -895,6 +947,33 @@ export function createFakes(first: FakeSpace = seedSpace()) {
       },
       async ShowFolder() {
         return { error: '', code: '' };
+      },
+    },
+    AgentService: {
+      async Answer(id: string, result: string, failure: string) {
+        asks.get(id)?.({ result, failure });
+        asks.delete(id);
+      },
+      async StopClaim(page: string) {
+        harness.stopped.push(page);
+        sendAgent('agent:claims', []);
+      },
+      async Claims() {
+        return [];
+      },
+      async Configure(allowAgents: boolean, port: number, allowEdits: boolean) {
+        agent.editing = allowEdits;
+        agent.on = allowAgents && !agent.portInUse;
+        agent.port = port;
+        return agentStatus();
+      },
+      async NewCode() {
+        agent.code = agent.code === 'K7Q2-9XFM-T4WD-3HNP' ? 'R8MV-2KXP-6TQB-WN4D' : 'K7Q2-9XFM-T4WD-3HNP';
+        if (agent.on) agent.connected = 0;
+        return agentStatus();
+      },
+      async Status() {
+        return agentStatus();
       },
     },
     LogService: {

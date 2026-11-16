@@ -1,6 +1,6 @@
 # AI
 
-Rules for AI features (not built yet).
+Rules for AI features.
 
 ## No service of ours
 Calls go from the user's machine to an endpoint they chose, with their
@@ -43,11 +43,19 @@ locked page is refused. Claims live in memory and end on release, at the end
 of a reply, or on the user's Stop; never on a timer. Nothing is removed for
 good: Trash, never emptied by the AI.
 
-## A closed page is changed in the page worker
-The open page takes AI changes in its editor and scene; a page not on screen
-in the background worker, with the same page readers and writers. Never a
-hidden editor in the window, a second hidden window, or file text written
-another way.
+## Page code reads and changes pages, never Go
+The open page is read and changed in its editor and scene; a page not on
+screen in the background worker, with the same page readers and writers.
+Never a hidden editor in the window, a second hidden window, or file text
+written another way. The same code writes what the AI reads (block numbers,
+element ids, the version), so a number means one block to both; Go holds
+no Markdown reader. A change against a stale version is refused.
+
+## The AI's changes are marked, the user's held
+On a page the AI holds, the editor takes only transactions marked
+`AI_CHANGE`, the canvas history only `mutate(recipe, 'ai')`; the user's
+input, undo and redo do nothing. Canvas sizing is `canvas/fit.ts` alone, the
+window's and the worker's.
 
 ## Bava writes the file, the AI says what it means
 Bava measures text, builds page-link addresses, writes date chips, numbers

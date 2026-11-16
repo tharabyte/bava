@@ -50,10 +50,11 @@ it has claimed (decisions 23 to 27).
    address is left out. The D2 is not kept: a later change to the diagram is
    an ordinary change to its shapes and arrows.
 
-5. **Changing** sends the page as short text (each block with its id; each
-   canvas element's id, label, position, size and connections; a pen stroke
-   as a summary of where it is, its size, colour and what it overlaps) and
-   takes back a list of changes keyed by id, never a replacement. The
+5. **Changing** sends the page as short text (each block with its number;
+   each canvas element's id, label, position, size and connections; a pen
+   stroke as a summary of where it is, its size, colour and what it
+   overlaps) and takes back a list of changes keyed by number or id, never
+   a replacement (decision 33). The
    changes go in as they arrive, with no review; each reply's changes are
    one undo step on their page (decision 26).
 
@@ -357,6 +358,20 @@ click or by a picture loading; removing can send nothing anywhere.
     does not match the window on a system, it is measured in Go with the
     bundled fonts, as D2 text is. Neither a hidden editor in the user's
     window nor a second hidden window is used.
+
+33. **The page code that applies a change also writes what the AI reads.**
+    The open page's text comes from its editor and scene, unsaved typing
+    included; a page not on screen from the background worker reading its
+    file. Both use the same page code, so a block's number means the same
+    block to the reader and to the code that changes it. Document blocks
+    are numbered in order (b1, b2, ...) when the page is read; the file
+    holds no block ids. Canvas elements keep their ids from the file.
+    Every read and every change answers with the page's version; a change
+    names the version it was made against, and a stale one is refused with
+    the fresh text, so the AI never changes the wrong block. The claim
+    keeps the user from shifting the numbers; only the AI's own changes
+    move them. Go writes no page text and holds no Markdown reader. Agreed
+    by the owner on 2026-11-16.
 
 ## Before Milestone 11
 

@@ -4,6 +4,9 @@
  * Go for a screenshot at each shot. Loaded only in a -tags e2e build, behind
  * VITE_BAVA_E2E; the app never imports it otherwise.
  */
+import { createFitter } from '../canvas/fit';
+import { readRootVariable } from '../canvas/palette';
+import type { SceneElement } from '../canvas/scene';
 import { PENDING } from '../files/tree';
 import { Call } from '@wailsio/runtime';
 
@@ -11,7 +14,7 @@ import { Call } from '@wailsio/runtime';
 export type Modifier = 'shift' | 'alt' | 'mod';
 
 export type Step = {
-  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste' | 'file' | 'pdf' | 'zip' | 'pdffile';
+  do: 'click' | 'type' | 'key' | 'menu' | 'wait' | 'gone' | 'shot' | 'drag' | 'pause' | 'paste' | 'file' | 'pdf' | 'zip' | 'pdffile' | 'agent' | 'measure';
   /**
    * What a click, wait or drag acts on; for a key, what it is pressed on (else
    * whatever has focus); for a file, its path in the scratch folder.
@@ -36,6 +39,8 @@ export type DriverEnv = {
   checkZip?(path: string, expect: string): Promise<string>;
   /** The host reads a PDF the app wrote: '' when it holds what it must, else why not. */
   checkPdf?(path: string, expect: string): Promise<string>;
+  /** Calls a tool as the user's own agent; '' when its answer holds `expect`, else why not. */
+  agent?(tool: string, args: string, expect: string): Promise<string>;
   timeoutMs: number;
   /** Whether a found element counts as showing; the page's layout by default. */
   visible?: (el: HTMLElement) => boolean;
@@ -317,6 +322,26 @@ async function step(s: Step, env: DriverEnv): Promise<string> {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
+    // A text the page worker sized, as saved, against what this window
+    // measures: the worker must store the sizes the window would.
+    case 'measure': {
+      if (!env.readFile) return 'no way to read files';
+      const read = await env.readFile(s.target!);
+      if (read.error) return read.error;
+      return measuredAsDrawn(read.text, s.name!);
+    }
+    // The user's own agent calling a tool, played by the host, until the
+    // answer holds the text: the plug opens a moment after the setting.
+    case 'agent': {
+      if (!env.agent) return 'no agent plug';
+      const end = Date.now() + timeout;
+      for (;;) {
+        const failure = await env.agent(s.target!, s.name ?? '', s.text!);
+        if (!failure) return '';
+        if (Date.now() > end) return failure;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    }
     case 'pdffile': {
       if (!env.checkPdf) return 'no way to read PDFs';
       const end = Date.now() + timeout;
@@ -379,7 +404,25 @@ export async function start(): Promise<void> {
     printSample: async (file, setup, expect) => (await Call.ByName(`${SERVICE}.PrintSample`, file, setup, expect)) as string,
     checkZip: async (path, expect) => (await Call.ByName(`${SERVICE}.CheckZip`, path, expect)) as string,
     checkPdf: async (path, expect) => (await Call.ByName(`${SERVICE}.CheckPDF`, path, expect)) as string,
+    agent: async (tool, args, expect) => (await Call.ByName(`${SERVICE}.Agent`, tool, args, expect)) as string,
     timeoutMs: 10_000,
   }).catch((error: unknown) => `the driver failed: ${String(error)}`);
   await Call.ByName(`${SERVICE}.Done`, failure);
+}
+
+/** '' when the saved text element `id` holds the size this window measures, else why not. */
+export function measuredAsDrawn(file: string, id: string, measure = windowMeasure): string {
+  const block = /```bava-canvas\n([\s\S]*?)\n```/.exec(file);
+  if (!block) return 'the file has no canvas';
+  const elements = (JSON.parse(block[1]) as { elements: { id: string; type: string; text?: string; measuredWidth?: number; measuredHeight?: number }[] }).elements;
+  const element = elements.find((e) => e.id === id);
+  if (!element || element.type !== 'text' || element.text === undefined) return `no text element ${id}`;
+  const size = measure(element as never);
+  const close = (a: number | undefined, b: number) => a !== undefined && Math.abs(a - b) < 0.01;
+  if (close(element.measuredWidth, size.width) && close(element.measuredHeight, size.height)) return '';
+  return `stored ${element.measuredWidth}x${element.measuredHeight}, measured here ${size.width}x${size.height}`;
+}
+
+function windowMeasure(element: SceneElement & { text: string }) {
+  return createFitter(readRootVariable).measureText(element, element.text);
 }

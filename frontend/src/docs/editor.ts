@@ -8,6 +8,7 @@
 // ProseMirror's own rules the editor relies on: how spaces wrap, no
 // ligatures under the caret, and the browser's highlight hidden while cells
 // or a node are selected; and the gap cursor's line.
+import { AI_CHANGE } from './ai-change';
 import 'prosemirror-view/style/prosemirror.css';
 import 'prosemirror-gapcursor/style/gapcursor.css';
 import { dropCursor } from 'prosemirror-dropcursor';
@@ -262,9 +263,12 @@ function listItemView(node: Node, view: EditorView, getPos: () => number | undef
   };
 }
 
+export { AI_CHANGE };
+
 export class DocEditor {
   view: EditorView | null = null;
   #front: FrontMatter = emptyFront;
+  #held = false;
   /** The page as it was read, to give back unchanged while nothing in it changes. */
   #loaded: { source: string; doc: Node; front: FrontMatter; body: string } | null = null;
   #foldMemory: string | null = null;
@@ -458,7 +462,11 @@ export class DocEditor {
         gapCursor(),
         placeholder(),
         // A locked page takes no edits, however they arrive.
-        new Plugin({ filterTransaction: (tr) => !tr.docChanged || !this.locked }),
+        // A read-only page refuses changes, except the AI's on a page it holds
+        // that the user has not locked.
+        new Plugin({
+          filterTransaction: (tr) => !tr.docChanged || !this.locked || (this.#held && !this.pageLocked && tr.getMeta(AI_CHANGE) === true),
+        }),
       ],
     });
   }
@@ -683,6 +691,23 @@ export class DocEditor {
   }
 
   /**
+   * Shows `markdown`, a page the AI changed while it was not on screen, with
+   * its undo history starting at `before`: ⌘Z takes the AI's changes back.
+   * The page reads as its file does, so it is not unsaved.
+   */
+  setPageAfter(before: string, markdown: string, foldMemory: string | null = null): void {
+    this.setPage(before, foldMemory);
+    const view = this.view;
+    if (!view) return;
+    const page = parsePage(markdown);
+    const doc = endsWithALine(withALine(page.doc));
+    const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content).setMeta(AI_CHANGE, true);
+    view.updateState(view.state.apply(tr));
+    this.#front = page.front;
+    this.#loaded = { source: markdown, doc: view.state.doc, front: page.front, body: page.body };
+  }
+
+  /**
    * The page as it now is: exactly as it was read while nothing in it has
    * changed, else in Bava's Markdown style. Null before a page is shown.
    */
@@ -702,8 +727,22 @@ export class DocEditor {
     return { ...this.#front.settings };
   }
 
+  /** Read-only: the user locked the page, or the AI holds it. */
   get locked(): boolean {
+    return this.#front.settings.locked === true || this.#held;
+  }
+
+  /** Whether the user locked the page, as its settings say. */
+  get pageLocked(): boolean {
     return this.#front.settings.locked === true;
+  }
+
+  /** The AI holds the page: read-only for the user until it lets go. */
+  setHeld(on: boolean): void {
+    if (this.#held === on) return;
+    this.#held = on;
+    // Asks the view whether it is editable again.
+    this.view?.setProps({});
   }
 
   /** The page's tags, converted. */

@@ -12,6 +12,7 @@
  * both slower and less stable across the two webviews.
  */
 import { tidy } from '../resize';
+import type { SceneElement } from '../scene';
 import { columnsFor, columnsIn, wrapLine } from './wrap';
 
 /**
@@ -64,3 +65,19 @@ export function measureCode(code: string, metrics: CodeMetrics, width?: number):
     height: tidy(lines.length * metrics.lineHeight + metrics.padding * 2),
   };
 }
+
+/**
+ * A block re-measured in place, at the metrics it now draws with (a new font
+ * size): its width is the user's, its code re-wraps to it, and it grows when
+ * the code needs more height.
+ */
+export function fitToCode(element: SceneElement, metrics: CodeMetrics): void {
+  if (element.type !== 'code') return;
+  const block = element as SceneElement & CodeFields;
+  const size = measureCode(block.code, metrics, block.w);
+  block.h = Math.max(block.h, size.height);
+  block.measuredWidth = size.width;
+  block.measuredHeight = size.height;
+}
+
+export type CodeFields = { code: string; measuredWidth: number; measuredHeight: number };

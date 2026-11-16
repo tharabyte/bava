@@ -15,10 +15,12 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"github.com/tharabyte/bava/internal/access"
+	"github.com/tharabyte/bava/internal/agent"
 	"github.com/tharabyte/bava/internal/app"
 	"github.com/tharabyte/bava/internal/config"
 	"github.com/tharabyte/bava/internal/logs"
 	"github.com/tharabyte/bava/internal/pdfprint"
+	"github.com/tharabyte/bava/internal/secrets"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -80,10 +82,48 @@ func main() {
 	// What the user allowed Bava to reach, kept for a store's sandbox.
 	grants := openGrants()
 	menus := app.NewMenuService()
+	// The agent plug's questions to the page: what only the page knows.
+	asker := agent.NewAsker(func(a agent.Ask) bool {
+		w := current.Load()
+		if w == nil || len(w.Window.GetAll()) == 0 {
+			return false
+		}
+		w.Event.Emit(agent.AskEvent, a)
+		return true
+	}, agent.AskTimeout)
+	// The pages the AI holds, read-only for the user; the window shows them.
+	claims := agent.NewClaims(func(pages []string) {
+		if w := current.Load(); w != nil {
+			w.Event.Emit(app.AgentClaimsEvent, pages)
+		}
+	})
+	// The plug a user's own agent connects to, off until AI settings turn it on.
+	plug := agent.NewPlug(agent.PlugOptions{
+		Safe: secrets.System(),
+		Look: agent.LookTools(asker),
+		Edit: agent.EditTools(asker, claims),
+		Step: func(step agent.Step) {
+			if w := current.Load(); w != nil {
+				w.Event.Emit(app.AgentStepEvent, step)
+			}
+		},
+		Changed: func(status agent.Status) {
+			// With no agent left, every page is the user's again.
+			if status.Connected == 0 {
+				claims.ReleaseAll()
+			}
+			if w := current.Load(); w != nil {
+				w.Event.Emit(app.AgentStatusEvent, status)
+			}
+		},
+	})
 	// Only a -tags e2e build has a driver and answers pickers itself.
 	driver, answers := smokeRun(current.Load, func() { _ = session.Close() }, func() []string {
 		lines, _ := session.Tail(recentLogLines)
 		return lines
+	}, func() (string, string) {
+		status := plug.Status()
+		return status.Address, status.Code
 	})
 	services := []application.Service{
 		application.NewService(app.NewRenderService()),
@@ -135,6 +175,7 @@ func main() {
 		})),
 		application.NewService(menus),
 		application.NewService(logService),
+		application.NewService(app.NewAgentService(app.AgentServiceOptions{Asker: asker, Plug: plug, Claims: claims})),
 	}
 	if answers.chooseFolder != nil {
 		services = append(services, driver)
@@ -152,6 +193,10 @@ func main() {
 		ctx := event.Context()
 		app.AllowDropped(grants, ctx.DroppedFiles())
 		wailsApp.Event.Emit(app.FilesDroppedEvent, app.DroppedFiles(ctx.DroppedFiles(), ctx.DropTargetDetails()))
+	})
+	// A question in flight is answered at once: no page is left to answer.
+	window.OnWindowEvent(events.Common.WindowClosing, func(*application.WindowEvent) {
+		asker.WindowClosed()
 	})
 	// macOS only: Wails beta.20 does not surface the equivalent on Windows or
 	// Linux. See ContentProcessDied.

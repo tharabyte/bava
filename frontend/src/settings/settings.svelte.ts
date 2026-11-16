@@ -37,6 +37,9 @@ export const SETTINGS_DEFAULTS: Settings = {
   midpointSnap: true,
   objectSnap: false,
   pageWidth: 'wide',
+  allowAgents: false,
+  agentPort: 7341,
+  allowAIEdits: false,
 };
 
 function isMode(value: string): value is AutosaveMode {
@@ -85,6 +88,18 @@ export function createSettings(io: SettingsIO = overIPC) {
       const w = values.pageWidth;
       return w === 'narrow' || w === 'full' ? w : 'wide';
     },
+    /** Whether an AI agent the user runs on this computer may connect. */
+    get allowAgents(): boolean {
+      return values.allowAgents === true;
+    },
+    /** The loopback port agents connect to. */
+    get agentPort(): number {
+      return values.agentPort || SETTINGS_DEFAULTS.agentPort;
+    },
+    /** Whether any AI may change pages; off, it only reads and answers. */
+    get allowAIEdits(): boolean {
+      return values.allowAIEdits === true;
+    },
     /** The engine the D2 diagram dialog opens with; one it does not know reads as TALA. */
     get layoutEngine(): LayoutEngine {
       return isLayoutEngine(values.layoutEngine) ? values.layoutEngine : 'tala';
@@ -102,6 +117,9 @@ export function createSettings(io: SettingsIO = overIPC) {
     setMidpointSnap: (on: boolean) => update({ midpointSnap: on }),
     setObjectSnap: (on: boolean) => update({ objectSnap: on }),
     setPageWidth: (width: 'narrow' | 'wide' | 'full') => update({ pageWidth: width }),
+    setAllowAgents: (on: boolean) => update({ allowAgents: on }),
+    setAgentPort: (port: number) => update({ agentPort: port }),
+    setAllowAIEdits: (on: boolean) => update({ allowAIEdits: on }),
 
     /**
      * Go owns this one: it changes the live log level too. Saving it here as

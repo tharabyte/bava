@@ -48,7 +48,24 @@ type Settings struct {
 	// page nor its Space sets one: narrow, wide or full. A preference of this
 	// viewer, never written into a page. Wide by default.
 	PageWidth string `json:"pageWidth"`
+	// AllowAgents is whether an AI agent the user runs on this computer may
+	// connect to Bava. Off by default.
+	AllowAgents bool `json:"allowAgents"`
+	// AgentPort is the loopback port agents connect to.
+	AgentPort int `json:"agentPort"`
+	// AllowAIEdits is whether any AI may change pages; off, the AI only
+	// reads and answers. Off by default.
+	AllowAIEdits bool `json:"allowAIEdits"`
 }
+
+// DefaultAgentPort is where agents connect unless the user picks another.
+const DefaultAgentPort = 7341
+
+// The ports a user's program may listen on.
+const (
+	MinAgentPort = 1024
+	MaxAgentPort = 65535
+)
 
 // Autosave modes.
 const (
@@ -78,6 +95,10 @@ func Defaults() Settings {
 		// Off: shapes move freely unless asked to snap.
 		ObjectSnap: false,
 		PageWidth:  "wide",
+		// Off: the AI reaches nothing until the user turns it on.
+		AllowAgents:  false,
+		AgentPort:    DefaultAgentPort,
+		AllowAIEdits: false,
 	}
 }
 
@@ -177,6 +198,9 @@ func sanitise(settings Settings) Settings {
 	default:
 		// Includes a mode from a newer version: never guess a different one.
 		settings.Autosave = AutosaveOff
+	}
+	if settings.AgentPort < MinAgentPort || settings.AgentPort > MaxAgentPort {
+		settings.AgentPort = DefaultAgentPort
 	}
 	switch {
 	case settings.AutosaveDelayMS <= 0:

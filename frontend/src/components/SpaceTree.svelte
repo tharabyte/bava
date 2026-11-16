@@ -21,6 +21,8 @@
     pending: { kind: EntryKind; folder: string; name?: string } | null;
     activePath: string | null;
     unsavedPath: string | null;
+    /** Pages the AI is editing, each marked. */
+    claimedPaths?: string[];
     /** A path to start renaming, from the right-click menu; the caller clears it. */
     renameRequest?: string | null;
     /** The row whose right-click menu is open, marked while it is. */
@@ -45,6 +47,7 @@
     pending,
     activePath,
     unsavedPath,
+    claimedPaths = [],
     renameRequest = null,
     menuPath = null,
     onToggle,
@@ -231,6 +234,7 @@
     <span class="chevron-space" aria-hidden="true"></span>
     <ToolIcon id="page" size="sm" />
     <TreeView.ItemText class="name">{label(node)}</TreeView.ItemText>
+    {#if claimedPaths.includes(node.value)}<span class="claim-mark" role="img" aria-label={t('agent.claimMark')} title={t('agent.claimMark')}><ToolIcon id="ai" size="sm" /></span>{/if}
     {#if node.value === unsavedPath}<span class="dot" role="img" aria-label={t('file.dirty')} title={t('file.dirty')}></span>{/if}
   {/if}
   <TreeView.NodeRenameInput class="rename" aria-label={t('tree.renameField')} />
@@ -398,6 +402,17 @@
 
   :global(.space-tree .rename[hidden]) {
     display: none;
+  }
+
+  :global(.space-tree .claim-mark) {
+    display: inline-flex;
+    flex: none;
+    margin-left: auto;
+    color: var(--color-text-muted);
+  }
+
+  :global(.space-tree .claim-mark + .dot) {
+    margin-left: var(--space-1);
   }
 
   :global(.space-tree .dot) {

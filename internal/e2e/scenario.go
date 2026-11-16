@@ -15,6 +15,8 @@ import (
 // Step is one thing the driver does in the page. Target is a CSS selector,
 // a menu command id for "menu", a path in the scratch folder for "file",
 // "zip" and "pdffile" (whose Text is what the file the app wrote must hold),
+// a tool for "agent" (whose Name is its arguments as JSON and Text what its
+// answer must hold),
 // or the PDF's file name for "pdf" (whose Name is its setup, as
 // "A4/portrait/normal", and Text what it must hold, "pages=2 size=210x297");
 // Text is what to type, the key to press, or the text a "wait" expects inside
@@ -151,6 +153,14 @@ func check(step Step) error {
 	case "pdffile":
 		if step.Target == "" || step.Text == "" {
 			return errors.New(`"pdffile" needs a target and what it must hold`)
+		}
+	case "measure":
+		if step.Target == "" || step.Name == "" {
+			return errors.New(`"measure" needs a target file and an element id as the name`)
+		}
+	case "agent":
+		if step.Target == "" || step.Text == "" {
+			return errors.New(`"agent" needs a tool as the target and what its answer must hold`)
 		}
 	case "pdf":
 		if step.Target == "" || step.Name == "" || step.Text == "" {

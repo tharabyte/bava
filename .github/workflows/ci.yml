@@ -82,6 +82,14 @@ jobs:
       - name: go test
         run: go test ./internal/... .
 
+      # The real Keychain and Credential Manager, which the run above skips.
+      # Linux has a safe only inside Flatpak; the store walk covers it.
+      - name: password safe
+        if: runner.os != 'Linux'
+        env:
+          BAVA_SYSTEM_SAFE: '1'
+        run: go test ./internal/secrets -run TestSystemSafe -v
+
       # Called out separately because this is the cross-platform claim that
       # matters most: identical SVG bytes from identical D2 input, everywhere.
       - name: golden files
@@ -224,7 +232,7 @@ jobs:
           }
           # Each run must leave a PASS: the exit code alone is not trusted, and a
           # run that crashed before reporting leaves no result at all.
-          for scenario in create reopen canvas export-proof import; do
+          for scenario in create reopen canvas export-proof import agent; do
             run "$scenario" || true
             result="$out/$scenario-result.txt"
             if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result"; exit 1; fi
@@ -270,7 +278,7 @@ jobs:
           container="$HOME/Library/Containers/com.tharabyte.bava/Data"
           # Every walk runs, so one failing does not hide what the others show.
           failed=0
-          for scenario in create reopen canvas export-proof import; do
+          for scenario in create reopen canvas export-proof import agent; do
             BAVA_E2E_SANDBOX=1 BAVA_E2E_SCENARIO="$scenario" bin/bava.app/Contents/MacOS/bava || true
             result="$container/smoke-out/$scenario-result.txt"
             if [[ ! -f "$result" ]]; then echo "::error::$scenario left no result in the sandbox"; failed=1; continue; fi
@@ -344,7 +352,7 @@ jobs:
           $package = Get-AppxPackage com.tharabyte.bava
           $out = "$env:USERPROFILE\smoke-out"
           $failed = 0
-          foreach ($scenario in 'create', 'reopen', 'canvas', 'export-proof', 'import') {
+          foreach ($scenario in 'create', 'reopen', 'canvas', 'export-proof', 'import', 'agent') {
             # A package starts without the shell's environment: the walk is
             # named in a file in the home. Not Set-Content, which left none.
             $runFile = Join-Path $env:USERPROFILE '.bava-e2e'
@@ -414,7 +422,7 @@ jobs:
           data="$HOME/.var/app/com.tharabyte.bava.Devel"
           # Every walk runs, so one failing does not hide what the others show.
           failed=0
-          for scenario in create reopen canvas export-proof import; do
+          for scenario in create reopen canvas export-proof import agent; do
             # WebKitGTK without a GPU: software drawing, or the window is blank.
             dbus-run-session -- xvfb-run -a -s "-screen 0 1440x900x24" \
               flatpak run \

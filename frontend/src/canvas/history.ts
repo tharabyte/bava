@@ -27,14 +27,29 @@ function differs(before: SceneData, after: SceneData): boolean {
   return JSON.stringify(before) !== JSON.stringify(after);
 }
 
+/** Who a change comes from: the user, or the AI on a page it holds. */
+export type ChangeFrom = 'user' | 'ai';
+
 export function createHistory(initial: SceneData) {
   let current: SceneData = initial;
   const past: Step[] = [];
   const future: Step[] = [];
+  // While the AI holds the page, it is read-only for the user: their
+  // changes, undo and redo do nothing; the AI's changes go in.
+  let held = false;
 
   return {
     get current(): SceneData {
       return current;
+    },
+
+    /** Whether the AI holds the page, so it is read-only for the user. */
+    get held(): boolean {
+      return held;
+    },
+
+    hold(on: boolean): void {
+      held = on;
     },
 
     get canUndo(): boolean {
@@ -66,7 +81,8 @@ export function createHistory(initial: SceneData) {
      * step it belongs to: one undo puts the shape and its arrows back
      * together (`.ai/rules/canvas.md`).
      */
-    mutate(recipe: (draft: SceneData) => void): void {
+    mutate(recipe: (draft: SceneData) => void, from: ChangeFrom = 'user'): void {
+      if (held && from === 'user') return;
       const [next, forward, inverse] = produceWithPatches(current, (draft) => {
         recipe(draft);
         // Both derived facts are settled inside the step that caused them:
@@ -90,6 +106,7 @@ export function createHistory(initial: SceneData) {
     },
 
     undo(): void {
+      if (held) return;
       const step = past.pop();
       if (!step) return;
       current = applyPatches(current, step.inverse);
@@ -97,6 +114,7 @@ export function createHistory(initial: SceneData) {
     },
 
     redo(): void {
+      if (held) return;
       const step = future.pop();
       if (!step) return;
       current = applyPatches(current, step.forward);

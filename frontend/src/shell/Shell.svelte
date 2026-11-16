@@ -54,6 +54,10 @@
     settingsOpen?: boolean;
     /** Sections for the settings dialog, after Appearance. */
     settings?: Section[];
+    /** The settings section shown when the dialog opens. */
+    settingsSection?: string;
+    /** The AI pane's content; an empty state when absent. */
+    ai?: Snippet;
     /** What shows with nothing open: the start screen. */
     start?: Snippet;
     /** Whether a page is open. A Space with none shows its tree and a hint. */
@@ -85,6 +89,8 @@
     view,
     settingsOpen = $bindable(false),
     settings = [],
+    settingsSection,
+    ai: aiPane,
     start,
     pageOpen = true,
     space,
@@ -173,11 +179,17 @@
 
     {#if view.showsAI}
       <div class="region region-ai">
-        <Pane title={t('pane.ai')}>
+        {#if aiPane}
           <PanelBoundary name={t('pane.ai')} onError={(error) => onPanelError('ai', error)}>
-            <EmptyState title={t('empty.ai.title')} body={t('empty.ai.body')} />
+            {@render aiPane()}
           </PanelBoundary>
-        </Pane>
+        {:else}
+          <Pane title={t('pane.ai')}>
+            <PanelBoundary name={t('pane.ai')} onError={(error) => onPanelError('ai', error)}>
+              <EmptyState title={t('empty.ai.title')} body={t('empty.ai.body')} />
+            </PanelBoundary>
+          </Pane>
+        {/if}
       </div>
     {/if}
   </div>
@@ -193,6 +205,7 @@
   {onPageWidth}
   onOpenChange={(open) => (settingsOpen = open)}
   sections={settings}
+  section={settingsSection}
 />
 
 <style>

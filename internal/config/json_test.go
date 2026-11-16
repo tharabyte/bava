@@ -11,6 +11,7 @@ import (
 // holds them: a renamed key would lose the user's preference.
 func TestSettingsKeepTheirJSONKeys(t *testing.T) {
 	testutil.AssertJSONKeys(t, config.Settings{},
+		"agentPort", "allowAIEdits", "allowAgents",
 		"arrowBinding", "autosave", "autosaveDelayMs", "debounceMs", "layoutEngine",
 		"midpointSnap", "objectSnap", "pageWidth", "verboseLogging")
 }

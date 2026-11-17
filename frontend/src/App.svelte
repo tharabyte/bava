@@ -1256,7 +1256,11 @@
    * the Space's page instead. With `quiet`, a folder that cannot be opened
    * is only marked missing, without a message.
    */
+  /** Page opens asked so far: a Space that finishes loading after one leaves that page be. */
+  let pageOpensAsked = 0;
+
   async function openSpace(dir: string, keepPage = false, quiet = false): Promise<boolean> {
+    const pagesBefore = pageOpensAsked;
     if (!keepPage) {
       if (doc.isOpen && !(await fileActions.close())) return false;
       loadScene([]);
@@ -1276,13 +1280,16 @@
       await showInTree(kept);
       return true;
     }
+    // A page opened while the Space loaded is the one wanted; reading the
+    // last page again would put the file back over what was done on it since.
     const last = space.lastPage;
-    if (last) await openPath(space.absolute(last));
+    if (last && pageOpensAsked === pagesBefore) await openPath(space.absolute(last));
     return true;
   }
 
   // Every way of opening a page ends here: the menu, recents, the tree.
   async function openPath(path: string) {
+    pageOpensAsked += 1;
     if (recents.kindOf(path) === 'space') {
       await openSpace(path);
       return;

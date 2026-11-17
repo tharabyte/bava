@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { SPACE, editor, menu, menus, newLineAtEnd, openApp, openPage, openSpace, restPointer, rightClick, sidePane, statusMessage } from '../helpers';
+import { SPACE, editor, fault, menu, menus, newLineAtEnd, openApp, openPage, openSpace, restPointer, rightClick, sidePane, statusMessage } from '../helpers';
 
 const RECENTS = [
   { path: '/Users/you/Documents/Acme Product', kind: 'space', openedAt: Date.UTC(2026, 8, 26) },
@@ -308,4 +308,25 @@ test('a file outside the Space is asked for once, then opens', async ({ page }) 
   const files = await page.evaluate(() => (window as unknown as Files).__bava.fakes.harness);
   expect(files.askedForFiles).toEqual(['../Contracts/deal.pdf']);
   expect(files.openedFiles).toEqual(['../Contracts/deal.pdf', '../Contracts/deal.pdf']);
+});
+
+// Opening a Space reopens its last page, unless a page was opened while it
+// loaded: the page chosen then stays as it is, never read again from disk
+// over what was drawn on it meanwhile.
+test('a page opened while the Space loads is not opened again by it', async ({ page }) => {
+  type Counts = { __bava: { fakes: { harness: { spacesOpened: number; pagesOpened: string[] } } } };
+  const counts = () => page.evaluate(() => (window as unknown as Counts).__bava.fakes.harness);
+  await openApp(page, 'light');
+  await openPage(page, 'Roadmap.md');
+  await fault(page, 'slowSpaceOpen', 400);
+  const before = (await counts()).spacesOpened;
+  await menu(page, 'file.openSpace');
+  // Clicked at once, as a hand can while the Space is still loading.
+  await page.locator('[data-path="Team handbook.md"]').dispatchEvent('click');
+  await expect(page.locator('header')).toContainText('Team handbook');
+  const opened = (await counts()).pagesOpened.length;
+  // The slow open answers; what it does next has a turn to happen.
+  await expect.poll(async () => (await counts()).spacesOpened).toBe(before + 1);
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  expect((await counts()).pagesOpened.slice(opened)).toEqual([]);
 });

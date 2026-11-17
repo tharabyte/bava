@@ -93,6 +93,8 @@ export type Faults = {
   unreadable: string | null;
   /** How long each page takes to open, in milliseconds. */
   slowOpen: number;
+  /** How long a Space takes to open, in milliseconds. */
+  slowSpaceOpen: number;
   /** A page, by its path in the Space, the system's printing fails on. */
   unprintable: string | null;
   /** How long each item of an import takes, in milliseconds: time to cancel it. */
@@ -134,7 +136,7 @@ function d2Errors(source: string) {
 
 export function createFakes(first: FakeSpace = seedSpace()) {
   const spaces = new Map<string, FakeSpace>([[first.root, first]]);
-  const faults: Faults = { changedOnDisk: false, saveFails: false, settingsSaveFails: false, undrawable: null, unreadable: null, slowOpen: 0, unprintable: null, slowImport: 0, slowZip: 0, slowPrint: 0 };
+  const faults: Faults = { changedOnDisk: false, saveFails: false, settingsSaveFails: false, undrawable: null, unreadable: null, slowOpen: 0, slowSpaceOpen: 0, unprintable: null, slowImport: 0, slowZip: 0, slowPrint: 0 };
   let settings = {
     debounceMs: 250,
     layoutEngine: 'tala',
@@ -552,6 +554,10 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     },
     /** Stops asked for, by page, as Go's StopClaim hears them. */
     stopped: [] as string[],
+    /** How many Space opens have answered. */
+    spacesOpened: 0,
+    /** Every page opened, by its path, in order. */
+    pagesOpened: [] as string[],
     /** An agent connecting (or going) as Go tells the window. */
     agentConnects(count: number) {
       agent.connected = count;
@@ -606,6 +612,8 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     harness,
     SpaceService: {
       async Open(dir: string) {
+        if (faults.slowSpaceOpen) await new Promise((resolve) => setTimeout(resolve, faults.slowSpaceOpen));
+        harness.spacesOpened += 1;
         const space = spaceOf(dir);
         return space ? info(space) : { root: '', name: '', pageWidth: '', ...refusal('notSpace', `${baseOf(dir)} is not a Space`) };
       },
@@ -805,6 +813,7 @@ export function createFakes(first: FakeSpace = seedSpace()) {
     FileService: {
       async Open(path: string) {
         if (path in loose) return { path, source: loose[path].source, diagrams: null, scene: structuredClone(loose[path].scene), stamp, error: '' };
+        harness.pagesOpened.push(path);
         const found = pageAt(path);
         if (faults.slowOpen) await new Promise((resolve) => setTimeout(resolve, faults.slowOpen));
         if (!found || found.rel === faults.unreadable) return { path, source: '', diagrams: null, scene: { version: 1, elements: [] }, stamp, error: `open ${path}: no such file` };

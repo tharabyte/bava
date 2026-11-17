@@ -89,3 +89,40 @@ func TestAgentStepCarriesTheLastVersionRead(t *testing.T) {
 		t.Fatalf("the change was sent %s", got[1])
 	}
 }
+
+// A walk is one agent, as the user's is: its steps share one connection, so
+// what it claimed stays claimed between them.
+func TestAgentStepsShareOneConnection(t *testing.T) {
+	var sessions []string
+	who := agent.Tool{
+		Def: &mcp.Tool{Name: "who", Description: "x", InputSchema: map[string]any{"type": "object"}},
+		Handle: func(_ context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			sessions = append(sessions, req.Session.ID())
+			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "ok"}}}, nil
+		},
+	}
+	plug := agent.NewPlug(agent.PlugOptions{Safe: secrets.NewMemory(), Look: []agent.Tool{who}})
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	ln.Close()
+	plug.Configure(true, port, false)
+	t.Cleanup(func() { plug.Configure(false, 0, false) })
+	s := e2e.NewService(e2e.Options{Quit: func(int) {}, Agent: func() (string, string) {
+		status := plug.Status()
+		return status.Address, status.Code
+	}})
+	for range 3 {
+		if failure := s.Agent("who", "", "ok"); failure != "" {
+			t.Fatal(failure)
+		}
+	}
+	if len(sessions) != 3 || sessions[0] != sessions[1] || sessions[1] != sessions[2] {
+		t.Fatalf("each step connected anew: %v", sessions)
+	}
+	if got := plug.Status().Connected; got != 1 {
+		t.Fatalf("connected between steps: %d", got)
+	}
+}

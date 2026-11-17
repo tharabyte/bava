@@ -71,7 +71,7 @@ lost and regained focus, and the app's last 40 log lines, so a run that kept not
 | `zip` | `target`, `text`: `holds=` and `lacks=`, items apart by `;` |
 | `pdffile` | `target`, `text`: `min=` sheets, `first=` / `last=` size in mm |
 | `pdf` | `target`, `name` as `paper/orientation/margins[/heavy]`, `text` as `pages=2 size=210x297` |
-| `agent` | `target` (a tool), `name` (its arguments as JSON; `${VERSION}` is the last version read), `text` its answer must hold |
+| `agent` | `target` (a tool), `name` (its arguments as JSON; `${VERSION}` is the last version read), `text` its answer must hold; every agent step of a walk shares one connection, so a claim lasts until released |
 | `measure` | `target` (a page in the scratch folder), `name` (a text element's id): its stored size equals what the window measures |
 
 Inside the Mac App Store's sandbox, the `store walks (macos)` job packs

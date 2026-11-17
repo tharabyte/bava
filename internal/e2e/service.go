@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // Options are what the service needs from its host: the scenario, where
@@ -37,6 +39,10 @@ type Service struct {
 	shots   int
 	// version is the last page version an agent step was answered with.
 	version string
+	// agent is the walk's one connection to the plug, kept between steps as
+	// the user's agent keeps it; agentAt is the address and code it used.
+	agent   *mcp.ClientSession
+	agentAt string
 }
 
 // NewService is the service a -tags e2e build registers.

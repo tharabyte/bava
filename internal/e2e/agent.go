@@ -50,16 +50,10 @@ func (s *Service) Agent(tool, args, expect string) string {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), agentWait)
 	defer cancel()
-	client := mcp.NewClient(&mcp.Implementation{Name: "bava-walk", Version: "1"}, nil)
-	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{
-		Endpoint:   address,
-		HTTPClient: &http.Client{Transport: bearer{code}},
-		MaxRetries: -1,
-	}, nil)
+	session, err := s.agentSession(ctx, address, code)
 	if err != nil {
 		return fmt.Sprintf("connect: %v", err)
 	}
-	defer session.Close()
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: arguments})
 	if err != nil {
 		return fmt.Sprintf("%s: %v", tool, err)
@@ -82,4 +76,31 @@ func (s *Service) Agent(tool, args, expect string) string {
 		return fmt.Sprintf("%s answered without %q: %s", tool, expect, text.String())
 	}
 	return ""
+}
+
+// agentSession is the walk's connection, made on the first agent step and
+// kept: the plug gives every page back when its last agent disconnects.
+func (s *Service) agentSession(ctx context.Context, address, code string) (*mcp.ClientSession, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	at := address + " " + code
+	if s.agent != nil && s.agentAt == at {
+		return s.agent, nil
+	}
+	if s.agent != nil {
+		_ = s.agent.Close()
+		s.agent = nil
+	}
+	client := mcp.NewClient(&mcp.Implementation{Name: "bava-walk", Version: "1"}, nil)
+	// Connecting is bounded by ctx; the session outlives this step.
+	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{
+		Endpoint:   address,
+		HTTPClient: &http.Client{Transport: bearer{code}},
+		MaxRetries: -1,
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.agent, s.agentAt = session, at
+	return session, nil
 }

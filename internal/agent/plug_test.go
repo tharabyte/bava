@@ -224,7 +224,7 @@ func TestPlugTellsWhenAgentsComeAndGo(t *testing.T) {
 					return
 				}
 			case <-deadline:
-				t.Fatalf("never told %d connected (now %d)", n, p.Status().Connected)
+				t.Fatalf("never told %d connected (now %d: %q)", n, p.Status().Connected, p.Sessions())
 			}
 		}
 	}

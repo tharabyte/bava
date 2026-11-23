@@ -199,6 +199,20 @@ func (s *Server) Connected() int {
 	return n
 }
 
+// Sessions describes each session held now: its id, the agent that opened
+// it, or that it has not introduced itself yet. For a failure to name them.
+func (s *Server) Sessions() []string {
+	var out []string
+	for session := range s.mcp.Sessions() {
+		who := "not introduced"
+		if params := session.InitializeParams(); params != nil && params.ClientInfo != nil {
+			who = params.ClientInfo.Name
+		}
+		out = append(out, session.ID()+" "+who)
+	}
+	return out
+}
+
 // Addr is where the plug listens, or nil when closed.
 func (s *Server) Addr() net.Addr {
 	s.mu.Lock()

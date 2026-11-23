@@ -168,6 +168,7 @@ there, in the same change; a plan's As built points to it.
 - A canvas embed's first save can leave the page unsaved, about 1 in 20 in `document.spec.ts`; not investigated.
 - The `import` walk on macOS failed three times right after File ▸ New Folder (step 5 or 8; runs 38322558497, 38329667461, 38336118999): the new folder's naming ended with focus on nothing. Suspected: the window losing focus ends the naming. A failed walk now reports focus, the naming and the window's focus by step; read that before fixing.
 - A floating menu's picture timing out in `placed` (`frontend/tests/helpers.ts`) is fixed locally; watch CI.
+- The agent plug sometimes holds one session more than its agents opened, on Linux CI only (runs 44140579741 attempts 1 and 2; never locally). `TestPlugTellsWhenAgentsComeAndGo` then never hears "1 connected"; its failure now names every session, with the agent that opened it or "not introduced". Read that before fixing.
 
 **Traps:**
 - A modal Ark Dialog sets `pointer-events: none` on `body`, so the canvas looks broken.

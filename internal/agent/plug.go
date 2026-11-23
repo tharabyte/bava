@@ -180,6 +180,11 @@ func (p *Plug) Status() Status {
 	return s
 }
 
+// Sessions describes the agents' sessions held now, for a failure to name.
+func (p *Plug) Sessions() []string {
+	return p.server.Sessions()
+}
+
 func (p *Plug) menu(editing bool) []Tool {
 	tools := append([]Tool(nil), p.opts.Look...)
 	if editing {
